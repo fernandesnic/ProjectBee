@@ -10,8 +10,12 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
 var app = builder.Build();
 
+app.UseExceptionHandler();
 app.UseSwagger();
 app.UseSwaggerUI();
 
@@ -44,7 +48,6 @@ productsApi.MapPost("/", async (CreateProductDTO dto, AppDbContext db) =>
 
 productsApi.MapGet("/", async (AppDbContext db) =>
 {
-
     var products = await db.Products.ToListAsync();
     return Results.Ok(products);
 
