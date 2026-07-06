@@ -17,25 +17,39 @@ app.UseSwaggerUI();
 
 app.MapGet("/", () => "API ProjectBee Online e operante!");
 
-var produtcsApi = app.MapGroup("/api/produtcs");
+var productsApi = app.MapGroup("/api/products");
 
 // Rota Post
-
-produtcsApi.MapPost("/", async (Product produtc, AppDbContext db) =>
+productsApi.MapPost("/", async (CreateProductDTO dto, AppDbContext db) =>
 {
-    db.Products.Add(produtc);
+    var product = new Product
+    {
+        Name = dto.Name,
+        SKU = dto.SKU,
+        Desc = dto.Desc,
+        Price = dto.Price,
+        Id = Guid.NewGuid(),
+        IsActive = true,
+        CreatedAt = DateTime.Now,
+        UpdatedAt = DateTime.Now
+    };
+
+    db.Products.Add(product);
     await db.SaveChangesAsync();
 
-    return Results.Created($"/api/produtcs/{produtc.Id}", produtc);
-
+    return Results.Created($"/api/products/{product.Id}", product);
 });
 
-produtcsApi.MapGet("/", async (AppDbContext db) =>
+// Rota Get
+
+productsApi.MapGet("/", async (AppDbContext db) =>
 {
 
-    var produtcs = await db.Products.ToListAsync();
-    return Results.Ok(produtcs);
+    var products = await db.Products.ToListAsync();
+    return Results.Ok(products);
 
 });
 
 app.Run();
+
+public record CreateProductDTO(string Name, string SKU, string Desc, decimal Price);

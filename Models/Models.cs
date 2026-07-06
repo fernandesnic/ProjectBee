@@ -25,10 +25,10 @@ public class Storage
 
 public class StockBalance
 {
-    public Guid ProductId { get; set; } 
-    public Product Product { get; set; }
-    public Guid StorageId { get; set; } 
-    public Storage Storage { get; set; }
+    public Guid ProductId { get; set; }
+    public Product Product { get; set; } = null!;
+    public Guid StorageId { get; set; }
+    public Storage Storage { get; set; } = null!;
     public int Balance { get; set; }
     public string Batch {  get; set; } = string.Empty;
 }
