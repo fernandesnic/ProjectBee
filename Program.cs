@@ -1,5 +1,8 @@
-using ProjectBee.Data;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
+using ProjectBee.Data;
+using ProjectBee.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +14,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
+
+builder.Services.AddValidatorsFromAssemblyContaining<CreateProductDTOValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<UpdateProductDTOValidator>();
+builder.Services.AddFluentValidationAutoValidation();
 
 var app = builder.Build();
 
@@ -25,5 +32,5 @@ app.MapProductEndpoints();
 
 app.Run();
 
-public record CreateProductDTO(string Name, string SKU, string Desc, decimal Price);
-public record UpdateProductDTO(string Name, string SKU, string Desc, decimal Price, bool IsActive);
+public record CreateProductDTO(string Name, string SKU, string Desc, decimal Price) : IProductDTO;
+public record UpdateProductDTO(string Name, string SKU, string Desc, decimal Price, bool IsActive) : IProductDTO;

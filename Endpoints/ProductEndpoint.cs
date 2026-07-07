@@ -1,6 +1,8 @@
+using FluentValidation;
+using Microsoft.EntityFrameworkCore;
 using ProjectBee.Data;
 using ProjectBee.Models;
-using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
 public static class ProductEndpointsExtensions
 {
@@ -9,8 +11,16 @@ public static class ProductEndpointsExtensions
 
     var productsApi = app.MapGroup("/api/products");
 
-        productsApi.MapPost("/", async (CreateProductDTO dto, AppDbContext db) =>
+        productsApi.MapPost("/", async (CreateProductDTO dto, IValidator < CreateProductDTO > validator, AppDbContext db) =>
         {
+
+            var validationResult = await validator.ValidateAsync(dto);
+
+            if (!validationResult.IsValid)
+            {
+                return Results.ValidationProblem(validationResult.ToDictionary());
+            } 
+
             var product = new Product
             {
                 Name = dto.Name,
@@ -53,17 +63,22 @@ public static class ProductEndpointsExtensions
 
         });
 
-        productsApi.MapPut("/{id}", async (UpdateProductDTO dto, AppDbContext db, Guid id) =>
+        productsApi.MapPut("/{id}", async (UpdateProductDTO dto, IValidator < UpdateProductDTO > validator, AppDbContext db, Guid id) =>
         {
+            var validationResult = await validator.ValidateAsync(dto);
 
-        var product = await db.Products.FindAsync(id);
+            if (!validationResult.IsValid)
+            {
+                return Results.ValidationProblem(validationResult.ToDictionary());
+            }
+
+            var product = await db.Products.FindAsync(id);
         if (product == null)
         {
         return Results.NotFound(new {mensagem = $"Produto não encontrado"});
         }
             
                 product.Name = dto.Name;
-                product.SKU = dto.SKU;
                 product.Desc = dto.Desc;
                 product.Price = dto.Price;
                 product.IsActive = true;
