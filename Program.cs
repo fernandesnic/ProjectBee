@@ -53,6 +53,45 @@ productsApi.MapGet("/", async (AppDbContext db) =>
 
 });
 
+productsApi.MapDelete("/{id}", async (AppDbContext db, Guid id) =>
+{
+
+   var product = await db.Products.FindAsync(id);
+   if (product == null)
+   {
+   return Results.NotFound(new {mensagem = $"Produto não encontrado"});
+   }
+    db.Products.Remove(product);
+
+    await db.SaveChangesAsync();
+
+    return Results.NoContent();
+
+});
+
+productsApi.MapPut("/{id}", async (UpdateProductDTO dto, AppDbContext db, Guid id) =>
+{
+
+   var product = await db.Products.FindAsync(id);
+   if (product == null)
+   {
+   return Results.NotFound(new {mensagem = $"Produto não encontrado"});
+   }
+    
+        product.Name = dto.Name;
+        product.SKU = dto.SKU;
+        product.Desc = dto.Desc;
+        product.Price = dto.Price;
+        product.IsActive = true;
+        product.UpdatedAt = DateTime.Now;
+
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new {mensagem = $"Produto atualizado com sucesso"});
+
+});
+
 app.Run();
 
 public record CreateProductDTO(string Name, string SKU, string Desc, decimal Price);
+public record UpdateProductDTO(string Name, string SKU, string Desc, decimal Price, bool IsActive);
