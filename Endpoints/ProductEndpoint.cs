@@ -57,6 +57,25 @@ public static class ProductEndpointsExtensions
 
         });
 
+        productsApi.MapGet("/{id}", async (AppDbContext db, Guid id) =>
+        {
+            var product = await db.Products.FindAsync(id);
+            if (product == null)
+            {
+                return Results.NotFound(new { mensagem = $"Produto não encontrado" });
+            }
+            var responder = new ProductResponseDTO(
+                product.Id,
+                product.Name,
+                product.SKU,
+                product.Desc,
+                product.Price
+                );
+
+            return Results.Ok(responder);
+
+        });
+
         productsApi.MapDelete("/{id}", async (AppDbContext db, Guid id) =>
         {
 
