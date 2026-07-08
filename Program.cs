@@ -34,3 +34,5 @@ app.Run();
 
 public record CreateProductDTO(string Name, string SKU, string Desc, decimal Price) : IProductDTO;
 public record UpdateProductDTO(string Name, string SKU, string Desc, decimal Price, bool IsActive) : IProductDTO;
+
+public record ProductResponseDTO(Guid Id, string Name, string SKU, string Desc, decimal Price);

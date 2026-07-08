@@ -36,14 +36,24 @@ public static class ProductEndpointsExtensions
             db.Products.Add(product);
             await db.SaveChangesAsync();
 
-            return Results.Created($"/api/products/{product.Id}", product);
+            var responseDTO = new ProductResponseDTO(product.Id, product.Name, product.SKU, product.Desc, product.Price);
+
+            return Results.Created($"/api/products/{product.Id}", responseDTO);
         });
 
 
         productsApi.MapGet("/", async (AppDbContext db) =>
         {
             var products = await db.Products.ToListAsync();
-            return Results.Ok(products);
+            var responder = products.Select(p => new ProductResponseDTO(
+                p.Id,
+                p.Name,
+                p.SKU,
+                p.Desc,
+                p.Price
+                )).ToList();
+
+            return Results.Ok(responder);
 
         });
 
