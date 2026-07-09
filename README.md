@@ -1,6 +1,6 @@
 # ProjectBee - Mini ERP Backend 🐝
 
-O ProjectBee representa a modernização da gestão de negócios. Desenvolvido para servir como o coração de um Mini ERP, este projeto pega a densidade das regras de negócio que vivenciei anos lidando com ERPs legados e as transforma em uma API leve, rápida e padronizada utilizando .NET 8. É a vitrine do meu portfólio, desenhada com foco em boas práticas, código limpo e arquitetura pronta para integrações front-end.
+O ProjectBee representa a modernização da gestão de negócios. Desenvolvido para servir como o coração de um Mini ERP, este projeto pega a densidade das regras de negócio que vivenciei lidando com ERPs legados e as transforma em uma API leve, rápida e padronizada utilizando .NET 8. É a vitrine do meu portfólio, desenhada com foco em boas práticas, código limpo e arquitetura pronta para integrações front-end.
 ## 🚀 Tecnologias Utilizadas
 
 * **C# 12** & **.NET 8**
@@ -14,7 +14,7 @@ O ProjectBee representa a modernização da gestão de negócios. Desenvolvido p
 
 Para garantir que o sistema opere em nível de produção e simule um cenário corporativo real, apliquei os seguintes padrões:
 
-1.  **Desacoplamento com DTOs (Data Transfer Objects):** As entidades originais do banco de dados nunca são expostas diretamente para o cliente. Criamos contratos específicos de entrada e contratos limpos de saída, blindando colunas internas de auditoria e segurança.
+1.  **Desacoplamento com DTOs (Data Transfer Objects):** As entidades originais do banco de dados nunca são expostas diretamente para o cliente. Criei contratos específicos de entrada e contratos limpos de saída, blindando colunas internas de auditoria e segurança.
 2.  **Modularização de Rotas (Extension Methods):** Para evitar um arquivo inflado e ilegível, as rotas foram isoladas em métodos de extensão organizados por contextos.
 3.  **Validação Rígida no Pipeline (FluentValidation):** Implementação de validações manuais injetadas diretamente nos endpoints da API, interceptando requisições malformadas e impedindo que "dados sujos" cheguem à camada de persistência.
 4.  **Tratamento Global de Erros:** Configuração de um utilizando o padrão (RFC 7807), garantindo respostas padronizadas em caso de falhas inesperadas no sistema.
@@ -31,7 +31,7 @@ Para garantir que o sistema opere em nível de produção e simule um cenário c
 ### 2. Armazéns / Depósitos (`Storages`)
 * **CRUD Completo** mapeando locais físicos de estocagem.
 * **Regras de Domínio Aplicadas:**
-    * Uso de strings para código de identificação e endereços para suportar numerações complexas de galpões (ex: "Galpão 3B", "S/N").
+    * Uso de strings para código de identificação e endereços para suportar ções complexas de galpões (ex: "Galpão 3B", "S/N").
     * Validação rigorosa de obrigatoriedade de campos de endereço (Rua, Cidade, Número) para evitar estoques órfãos.
 
 ## 🛠️ Como Executar o Projeto
