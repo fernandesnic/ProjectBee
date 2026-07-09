@@ -17,10 +17,13 @@
 public class Storage
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public int IdNumber { get; set; }
-    public int AdressNumber { get; set; }
+    public string IdNumber { get; set; } = string.Empty;
+    public string AddressNumber { get; set; } = string.Empty;
     public string AddressStreet { get; set; } = string.Empty;
     public string AddressCity { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime UpdatedAt { get; set; }
 }
 
 public class StockBalance

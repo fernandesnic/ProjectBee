@@ -16,8 +16,8 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 builder.Services.AddValidatorsFromAssemblyContaining<CreateProductDTOValidator>();
-builder.Services.AddValidatorsFromAssemblyContaining<UpdateProductDTOValidator>();
 builder.Services.AddFluentValidationAutoValidation();
+
 
 var app = builder.Build();
 
@@ -29,10 +29,16 @@ app.MapGet("/", () => "API ProjectBee Online e operante!");
 
 app.MapProductEndpoints();
 
+app.MapStorageEndpoints();
+
 
 app.Run();
 
 public record CreateProductDTO(string Name, string SKU, string Desc, decimal Price) : IProductDTO;
 public record UpdateProductDTO(string Name, string SKU, string Desc, decimal Price, bool IsActive) : IProductDTO;
-
 public record ProductResponseDTO(Guid Id, string Name, string SKU, string Desc, decimal Price);
+
+
+public record CreateStorageDTO(string IdNumber, string AddressNumber, string AddressStreet, string AddressCity) : IStorageDTO;
+public record UpdateStorageDTO(string IdNumber, string AddressNumber, string AddressStreet, string AddressCity) : IStorageDTO;
+public record StorageResponseDTO(Guid Id, string IdNumber, string AddressNumber, string AddressStreet, string AddressCity);
