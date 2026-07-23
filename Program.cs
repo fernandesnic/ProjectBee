@@ -1,5 +1,4 @@
 using FluentValidation;
-using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using ProjectBee.Data;
 using ProjectBee.Interfaces;
@@ -16,8 +15,6 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 builder.Services.AddValidatorsFromAssemblyContaining<CreateProductDTOValidator>();
-builder.Services.AddFluentValidationAutoValidation();
-
 
 var app = builder.Build();
 
@@ -46,4 +43,4 @@ public record StorageResponseDTO(Guid Id, string IdNumber, string AddressNumber,
 
 public record CreateStockDTO(Guid ProductId, Guid StorageId, int Balance, string Batch) : IStockDTO;
 public record UpdateStockDTO(Guid ProductId, Guid StorageId, int Balance, string Batch) : IStockDTO;
-public record StockResponseDTO(Guid ProductId, string ProductName, Guid StorageId, string StorageName ,int Balance, string Batch)
+public record StockResponseDTO(Guid ProductId, string ProductName, Guid StorageId, string StorageName, int Balance, string Batch);
