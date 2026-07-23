@@ -7,7 +7,7 @@ public static class StorageEndpointsExtensions
 {
     public static void MapStorageEndpoints(this IEndpointRouteBuilder app)
     {
-        var StoragesApi = app.MapGroup("/api/Storages");
+        var StoragesApi = app.MapGroup("/api/storages");
 
         StoragesApi.MapPost("/", async (CreateStorageDTO dto, IValidator<CreateStorageDTO> validator, AppDbContext db) =>
         {
@@ -36,7 +36,7 @@ public static class StorageEndpointsExtensions
             // Ordem corrigida aqui!
             var responseDTO = new StorageResponseDTO(Storage.Id, Storage.IdNumber, Storage.AddressNumber, Storage.AddressStreet, Storage.AddressCity);
 
-            return Results.Created($"/api/Storages/{Storage.Id}", responseDTO);
+            return Results.Created($"/api/storages/{Storage.Id}", responseDTO);
         });
 
         StoragesApi.MapGet("/", async (AppDbContext db) =>

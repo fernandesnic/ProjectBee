@@ -2,7 +2,6 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using ProjectBee.Data;
 using ProjectBee.Models;
-using System.ComponentModel.DataAnnotations;
 
 public static class ProductEndpointsExtensions
 {
