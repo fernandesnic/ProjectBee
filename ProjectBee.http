@@ -1,0 +1,274 @@
+@host = http://localhost:5000
+@contentType = application/json
+
+# Cole aqui os IDs retornados pelos POSTs de criacao
+@productId = 4e576ee3-16ae-4e11-95c8-6829f5c7e4bf
+@storageId = 22a5e400-35ee-4ab3-aec6-4611991dd121
+
+
+### =====================================================
+### HEALTH CHECK
+### =====================================================
+
+GET {{host}}/
+Accept: text/plain
+
+
+### =====================================================
+### PRODUTOS - Caminho feliz
+### =====================================================
+
+### Criar produto -> espera 201 Created
+POST {{host}}/api/products
+Content-Type: {{contentType}}
+
+{
+  "name": "Mel Silvestre 500g",
+  "sku": "MEL-500-SIL",
+  "desc": "Mel silvestre puro, pote de vidro 500g",
+  "price": 34.90
+}
+
+### Criar segundo produto -> espera 201 Created
+POST {{host}}/api/products
+Content-Type: {{contentType}}
+
+{
+  "name": "Propolis Extrato 30ml",
+  "sku": "PROP-30-EXT",
+  "desc": "Extrato de propolis verde, frasco 30ml",
+  "price": 27.50
+}
+
+### Listar todos -> espera 200 OK
+GET {{host}}/api/products
+Accept: {{contentType}}
+
+### Buscar por ID -> espera 200 OK
+GET {{host}}/api/products/{{productId}}
+Accept: {{contentType}}
+
+### Atualizar -> espera 200 OK
+PUT {{host}}/api/products/{{productId}}
+Content-Type: {{contentType}}
+
+{
+  "name": "Mel Silvestre 500g - Safra 2026",
+  "sku": "MEL-500-SIL",
+  "desc": "Mel silvestre puro, safra 2026, pote de vidro 500g",
+  "price": 39.90,
+  "isActive": true
+}
+
+
+### =====================================================
+### PRODUTOS - Casos de erro (validacao)
+### Esta secao e a que prova que suas regras funcionam
+### =====================================================
+
+### Preco zero -> espera 400 ValidationProblem
+POST {{host}}/api/products
+Content-Type: {{contentType}}
+
+{
+  "name": "Produto Invalido",
+  "sku": "INV-001",
+  "desc": "Preco deve ser maior que zero",
+  "price": 0
+}
+
+### Nome com menos de 3 caracteres -> espera 400 ValidationProblem
+POST {{host}}/api/products
+Content-Type: {{contentType}}
+
+{
+  "name": "AB",
+  "sku": "INV-002",
+  "desc": "Nome curto demais",
+  "price": 10.00
+}
+
+### SKU com minusculas -> espera 400 (regex ^[A-Z0-9-]{3,15}$)
+POST {{host}}/api/products
+Content-Type: {{contentType}}
+
+{
+  "name": "Produto SKU Invalido",
+  "sku": "mel-500-sil",
+  "desc": "SKU fora do padrao",
+  "price": 10.00
+}
+
+### SKU duplicado -> espera 400 (validacao assincrona no banco)
+POST {{host}}/api/products
+Content-Type: {{contentType}}
+
+{
+  "name": "Mel Duplicado",
+  "sku": "MEL-500-SIL",
+  "desc": "SKU ja existente",
+  "price": 34.90
+}
+
+### ID inexistente -> espera 404 NotFound
+GET {{host}}/api/products/11111111-1111-1111-1111-111111111111
+Accept: {{contentType}}
+
+
+### =====================================================
+### ARMAZENS
+### Atencao: a rota esta com S maiusculo no codigo atual
+### =====================================================
+
+### Criar armazem -> espera 201 Created
+POST {{host}}/api/Storages
+Content-Type: {{contentType}}
+
+{
+  "idNumber": "SP1",
+  "addressNumber": "1250",
+  "addressStreet": "Rua das Colmeias",
+  "addressCity": "Sao Paulo"
+}
+
+### Criar segundo armazem -> espera 201 Created
+POST {{host}}/api/Storages
+Content-Type: {{contentType}}
+
+{
+  "idNumber": "SRQ",
+  "addressNumber": "S/N",
+  "addressStreet": "Estrada do Apiario, km 12",
+  "addressCity": "Sao Roque"
+}
+
+### Listar todos -> espera 200 OK
+GET {{host}}/api/Storages
+Accept: {{contentType}}
+
+### Buscar por ID -> espera 200 OK
+GET {{host}}/api/Storages/{{storageId}}
+Accept: {{contentType}}
+
+### Atualizar -> espera 200 OK
+PUT {{host}}/api/Storages/{{storageId}}
+Content-Type: {{contentType}}
+
+{
+  "idNumber": "SP1",
+  "addressNumber": "1250-A",
+  "addressStreet": "Rua das Colmeias",
+  "addressCity": "Sao Paulo"
+}
+
+### Cidade vazia -> espera 400 ValidationProblem
+POST {{host}}/api/Storages
+Content-Type: {{contentType}}
+
+{
+  "idNumber": "XXX",
+  "addressNumber": "100",
+  "addressStreet": "Rua Teste",
+  "addressCity": ""
+}
+
+### BUG CONHECIDO: idNumber com 4+ caracteres -> retorna 400
+### O validator usa .Length(3), que exige exatamente 3 caracteres.
+### O README promete suportar "Galpao 3B". Corrigir para .Length(3, 20).
+POST {{host}}/api/Storages
+Content-Type: {{contentType}}
+
+{
+  "idNumber": "GALPAO-3B",
+  "addressNumber": "77",
+  "addressStreet": "Avenida Industrial",
+  "addressCity": "Barueri"
+}
+
+
+### =====================================================
+### ESTOQUE
+### =====================================================
+
+### Registrar saldo -> espera 200 OK
+POST {{host}}/api/stock
+Content-Type: {{contentType}}
+
+{
+  "productId": "{{productId}}",
+  "storageId": "{{storageId}}",
+  "balance": 120,
+  "batch": "LOTE-2026-001"
+}
+
+### Segundo lote do MESMO produto no MESMO armazem -> espera 200 OK
+### (a PK e composta por ProductId + StorageId + Batch)
+POST {{host}}/api/stock
+Content-Type: {{contentType}}
+
+{
+  "productId": "{{productId}}",
+  "storageId": "{{storageId}}",
+  "balance": 45,
+  "batch": "LOTE-2026-002"
+}
+
+### Listar saldos com produto e armazem -> espera 200 OK
+GET {{host}}/api/stock
+Accept: {{contentType}}
+
+### Atualizar saldo -> espera 200 OK
+PUT {{host}}/api/stock/{{productId}}/{{storageId}}
+Content-Type: {{contentType}}
+
+{
+  "productId": "{{productId}}",
+  "storageId": "{{storageId}}",
+  "balance": 200,
+  "batch": "LOTE-2026-001"
+}
+
+### BUG CONHECIDO: rode o PUT acima depois de criar os dois lotes.
+### O endpoint filtra por FirstOrDefaultAsync(ProductId + StorageId),
+### ignorando o Batch, entao ele atualiza um lote arbitrario.
+### A rota precisa incluir o batch: /api/stock/{productId}/{storageId}/{batch}
+
+### Produto inexistente -> espera 400 ValidationProblem
+POST {{host}}/api/stock
+Content-Type: {{contentType}}
+
+{
+  "productId": "11111111-1111-1111-1111-111111111111",
+  "storageId": "{{storageId}}",
+  "balance": 10,
+  "batch": "LOTE-FANTASMA"
+}
+
+### Saldo zero -> espera 400 ValidationProblem
+POST {{host}}/api/stock
+Content-Type: {{contentType}}
+
+{
+  "productId": "{{productId}}",
+  "storageId": "{{storageId}}",
+  "balance": 0,
+  "batch": "LOTE-2026-003"
+}
+
+### BUG CONHECIDO: rode o primeiro POST de estoque duas vezes.
+### A chave duplicada estoura DbUpdateException -> 500 Internal Server Error.
+### O correto seria 409 Conflict.
+
+
+### =====================================================
+### LIMPEZA
+### =====================================================
+
+### Remover saldo -> espera 204 NoContent
+DELETE {{host}}/api/stock/{{productId}}/{{storageId}}
+
+### Remover armazem -> espera 204 NoContent
+DELETE {{host}}/api/storages/{{storageId}}
+
+### Remover produto -> espera 204 NoContent
+DELETE {{host}}/api/products/{{productId}}

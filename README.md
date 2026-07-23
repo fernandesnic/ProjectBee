@@ -1,55 +1,182 @@
-# ProjectBee - Mini ERP Backend 🐝
+# 🐝 ProjectBee
 
-O ProjectBee representa a modernização da gestão de negócios. Desenvolvido para servir como o coração de um Mini ERP, este projeto pega a densidade das regras de negócio que vivenciei lidando com ERPs legados e as transforma em uma API leve, rápida e padronizada utilizando .NET 8. É a vitrine do meu portfólio, desenhada com foco em boas práticas, código limpo e arquitetura pronta para integrações front-end.
-## 🚀 Tecnologias Utilizadas
+**API REST para controle de estoque multi-armazém, com rastreabilidade por lote.**
 
-* **C# 12** & **.NET 8**
-* **ASP.NET Core Minimal APIs** (Rotas de alta performance e baixo overhead)
-* **Entity Framework Core 8** (Abordagem Code-First com Migrations)
-* **SQL Server** (Banco de dados relacional corporativo)
-* **FluentValidation** (Validações de domínio robustas e centralizadas)
-* **Swagger/OpenAPI** (Documentação interativa de contratos)
+![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)
+![C#](https://img.shields.io/badge/C%23-14-239120)
+![EF Core](https://img.shields.io/badge/EF%20Core-10-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-## 🏗️ Decisões Arquiteturais e Padrões de Projeto
+<!-- Adicione quando a Fase 6 estiver pronta:
+![CI](https://github.com/fernandesnic/ProjectBee/actions/workflows/ci.yml/badge.svg)
+-->
 
-Para garantir que o sistema opere em nível de produção e simule um cenário corporativo real, apliquei os seguintes padrões:
+---
 
-1.  **Desacoplamento com DTOs (Data Transfer Objects):** As entidades originais do banco de dados nunca são expostas diretamente para o cliente. Criei contratos específicos de entrada e contratos limpos de saída, blindando colunas internas de auditoria e segurança.
-2.  **Modularização de Rotas (Extension Methods):** Para evitar um arquivo inflado e ilegível, as rotas foram isoladas em métodos de extensão organizados por contextos.
-3.  **Validação Rígida no Pipeline (FluentValidation):** Implementação de validações manuais injetadas diretamente nos endpoints da API, interceptando requisições malformadas e impedindo que "dados sujos" cheguem à camada de persistência.
-4.  **Tratamento Global de Erros:** Configuração de um utilizando o padrão (RFC 7807), garantindo respostas padronizadas em caso de falhas inesperadas no sistema.
+## Sobre
 
-## 📦 Módulos Implementados Até o Momento
+Trabalhando com ERPs legados, percebi que a maior parte da complexidade não está na tela — está nas regras que impedem o estoque de mentir. O ProjectBee é a minha implementação dessa camada: uma API em .NET 10 que controla saldo de produtos distribuídos entre múltiplos armazéns, com controle de lote.
 
-### 1. Produtos (`Products`)
-* **CRUD Completo** com respostas HTTP semânticas (201 Created, 204 NoContent, 404 NotFound).
-* **Regras de Domínio Aplicadas:**
-    * Preço obrigatoriamente maior que zero.
-    * Nome com tamanho mínimo de 3 caracteres.
-    * **SKU Único e Padronizado:** Validação assíncrona que consulta o banco de dados via EF Core para impedir SKUs duplicados. Validação via Regex para garantir que o SKU contenha apenas letras maiúsculas, números e traços (padrão de código de barras).
+O foco do projeto não é quantidade de endpoints, e sim modelagem correta: chave composta, integridade referencial validada antes da persistência, contratos de entrada e saída separados das entidades e erros padronizados em RFC 7807.
 
-### 2. Armazéns / Depósitos (`Storages`)
-* **CRUD Completo** mapeando locais físicos de estocagem.
-* **Regras de Domínio Aplicadas:**
-    * Uso de strings para código de identificação e endereços para suportar ções complexas de galpões (ex: "Galpão 3B", "S/N").
-    * Validação rigorosa de obrigatoriedade de campos de endereço (Rua, Cidade, Número) para evitar estoques órfãos.
+---
 
-## 🛠️ Como Executar o Projeto
+## Stack
 
-1.  **Clonar o repositório:**
-    ```bash
-    git clone [https://github.com/fernandesnic/ProjectBee.git]
-    cd project-bee
-    ```
-2.  **Configurar a Connection String:**
-    Abra o arquivo `appsettings.json` e insira as credenciais do seu SQL Server local na chave `DefaultConnection`.
-3.  **Rodar as Migrations (Criar o banco e tabelas):**
-    ```bash
-    dotnet ef database update
-    ```
-4.  **Executar a aplicação:**
-    ```bash
-    dotnet run
-    ```
-5.  **Acessar a documentação (Swagger):**
-    Navegue até `http://localhost:XXXX/swagger` (substitua pela porta gerada no console) para interagir com os endpoints via interface gráfica.
+| Camada | Tecnologia |
+|---|---|
+| Runtime | .NET 10 / C# 14 |
+| API | ASP.NET Core Minimal APIs |
+| ORM | Entity Framework Core 10 (Code-First + Migrations) |
+| Banco | SQL Server |
+| Validação | FluentValidation |
+| Documentação | Swagger / OpenAPI (Swashbuckle) |
+
+---
+
+## Modelo de dados
+
+```
+Product ──┐
+          ├──< StockBalance >── Storage
+          │    PK: (ProductId, StorageId, Batch)
+```
+
+O saldo não é um campo dentro do produto. É uma entidade própria com **chave primária composta por produto + armazém + lote**, o que permite o mesmo item existir em quantidades diferentes em locais diferentes, com rastreabilidade de lote — requisito básico de qualquer operação com validade ou recall.
+
+---
+
+## Endpoints
+
+### Produtos
+
+| Método | Rota | Descrição | Respostas |
+|---|---|---|---|
+| `POST` | `/api/products` | Cadastra produto | `201` `400` |
+| `GET` | `/api/products` | Lista produtos | `200` |
+| `GET` | `/api/products/{id}` | Busca por ID | `200` `404` |
+| `PUT` | `/api/products/{id}` | Atualiza produto | `200` `400` `404` |
+| `DELETE` | `/api/products/{id}` | Remove produto | `204` `404` |
+
+### Armazéns
+
+| Método | Rota | Descrição | Respostas |
+|---|---|---|---|
+| `POST` | `/api/storages` | Cadastra armazém | `201` `400` |
+| `GET` | `/api/storages` | Lista armazéns | `200` |
+| `GET` | `/api/storages/{id}` | Busca por ID | `200` `404` |
+| `PUT` | `/api/storages/{id}` | Atualiza armazém | `200` `400` `404` |
+| `DELETE` | `/api/storages/{id}` | Remove armazém | `204` `404` |
+
+### Estoque
+
+| Método | Rota | Descrição | Respostas |
+|---|---|---|---|
+| `POST` | `/api/stock` | Registra saldo | `200` `400` |
+| `GET` | `/api/stock` | Lista saldos com produto e armazém | `200` |
+| `PUT` | `/api/stock/{productId}/{storageId}` | Atualiza saldo | `200` `400` `404` |
+| `DELETE` | `/api/stock/{productId}/{storageId}` | Remove saldo | `204` `404` |
+
+> O arquivo [`ProjectBee.http`](./ProjectBee.http) contém requisições prontas para todos os endpoints, incluindo os casos de erro. Abra no Visual Studio ou VS Code e execute direto.
+
+---
+
+## Regras de negócio implementadas
+
+**Produtos**
+- Preço maior que zero
+- Nome com no mínimo 3 caracteres
+- SKU no padrão `^[A-Z0-9-]{3,15}$` — apenas maiúsculas, dígitos e hífen
+- SKU único: validação assíncrona consulta o banco antes de persistir
+
+**Armazéns**
+- Código identificador e número do endereço são strings, não inteiros — endereços reais de galpão não cabem em `int` (`"S/N"`, `"1250-A"`)
+- Rua, cidade e número obrigatórios, para não existir armazém sem localização
+
+**Estoque**
+- Saldo maior que zero
+- `ProductId` e `StorageId` verificados contra o banco antes da inserção: não é possível registrar saldo de produto ou armazém inexistente
+- Chave composta com lote permite múltiplos lotes do mesmo produto no mesmo armazém
+
+---
+
+## Decisões técnicas
+
+**Minimal APIs em vez de Controllers.** Menos cerimônia para uma API sem views, e o roteamento fica explícito. Para evitar um `Program.cs` de 400 linhas, cada módulo virou um extension method (`MapProductEndpoints`, `MapStorageEndpoints`, `MapStockEndpoints`) em arquivo próprio.
+
+**DTOs separados das entidades.** Contratos distintos de entrada e saída. As entidades carregam `CreatedAt`, `UpdatedAt` e `IsActive`, que são detalhe interno e não vazam na resposta. Entrada e saída separadas também porque criar e atualizar aceitam campos diferentes.
+
+**Validators genéricos com classe base.** `CreateProductDTO` e `UpdateProductDTO` implementam a mesma interface, e um `BaseProductValidator<T>` concentra as regras comuns. Evita duplicar validação entre criação e edição.
+
+**Erros padronizados em RFC 7807.** Um `IExceptionHandler` global converte exceções não tratadas em `ProblemDetails`, com o detalhe técnico exposto apenas em ambiente de desenvolvimento. As falhas de validação retornam `ValidationProblem`, no mesmo formato.
+
+---
+
+## Estrutura
+
+```
+ProjectBee/
+├── Data/           # AppDbContext e configuração do modelo
+├── DTOs/           # Contratos de entrada e saída
+├── Endpoints/      # Mapeamento HTTP por módulo
+├── Interfaces/     # Contratos compartilhados entre DTOs
+├── Middlewares/    # Tratamento global de exceções
+├── Migrations/     # Histórico do schema (EF Core)
+├── Models/         # Entidades de domínio
+└── Validators/     # Regras de validação (FluentValidation)
+```
+
+---
+
+## Executando localmente
+
+**Pré-requisitos:** [.NET SDK 10](https://dotnet.microsoft.com/download) e SQL Server (LocalDB, Express ou Docker).
+
+```bash
+git clone https://github.com/fernandesnic/ProjectBee.git
+cd ProjectBee
+```
+
+Configure a connection string via User Secrets, para não versionar credenciais:
+
+```bash
+dotnet user-secrets init
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
+  "Server=localhost;Database=ProjectBeeDB;Trusted_Connection=True;TrustServerCertificate=True;"
+```
+
+Crie o banco e suba a aplicação:
+
+```bash
+dotnet tool install --global dotnet-ef   # se ainda não tiver
+dotnet ef database update
+dotnet run
+```
+
+A API sobe em `http://localhost:5054`. O Swagger fica em **http://localhost:5054/swagger**.
+
+---
+
+## Roadmap
+
+- [ ] Livro-razão de movimentações (entrada, saída, transferência, ajuste) com saldo derivado
+- [ ] Controle de concorrência otimista para impedir saldo negativo em requisições simultâneas
+- [ ] Índice único de SKU no banco, além da validação na aplicação
+- [ ] Soft delete e paginação nas listagens
+- [ ] Autenticação JWT com perfis de acesso (operador / gerente)
+- [ ] Rate limiting e log de auditoria
+- [ ] Testes unitários e de integração
+- [ ] Front-end em React + TypeScript
+- [ ] Docker Compose e deploy com demo pública
+
+---
+
+## Autor
+
+**Nicolas Fernandes**
+
+[LinkedIn](https://linkedin.com/in/SEU-USUARIO) · [GitHub](https://github.com/fernandesnic)
+
+---
+
+Distribuído sob licença MIT.
