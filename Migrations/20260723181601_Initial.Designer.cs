@@ -12,8 +12,8 @@ using ProjectBee.Data;
 namespace ProjectBee.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260709000643_AlterandoTiposStorages")]
-    partial class AlterandoTiposStorages
+    [Migration("20260723181601_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

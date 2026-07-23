@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ProjectBee.Migrations
 {
     /// <inheritdoc />
-    public partial class Inicial : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -34,10 +34,13 @@ namespace ProjectBee.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    IdNumber = table.Column<int>(type: "int", nullable: false),
-                    AdressNumber = table.Column<int>(type: "int", nullable: false),
+                    IdNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    AddressNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     AddressStreet = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    AddressCity = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    AddressCity = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
