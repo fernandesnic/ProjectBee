@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using ProjectBee.Data;
 using ProjectBee.Interfaces;
+
 public abstract class BaseProductValidator<T> : AbstractValidator<T> where T : IProductDTO
 {
     public BaseProductValidator()

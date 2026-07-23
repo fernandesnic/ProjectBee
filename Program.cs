@@ -31,6 +31,7 @@ app.MapProductEndpoints();
 
 app.MapStorageEndpoints();
 
+app.MapStockEndpoints();
 
 app.Run();
 
@@ -42,3 +43,7 @@ public record ProductResponseDTO(Guid Id, string Name, string SKU, string Desc, 
 public record CreateStorageDTO(string IdNumber, string AddressNumber, string AddressStreet, string AddressCity) : IStorageDTO;
 public record UpdateStorageDTO(string IdNumber, string AddressNumber, string AddressStreet, string AddressCity) : IStorageDTO;
 public record StorageResponseDTO(Guid Id, string IdNumber, string AddressNumber, string AddressStreet, string AddressCity);
+
+public record CreateStockDTO(Guid ProductId, Guid StorageId, int Balance, string Batch) : IStockDTO;
+public record UpdateStockDTO(Guid ProductId, Guid StorageId, int Balance, string Batch) : IStockDTO;
+public record StockResponseDTO(Guid ProductId, string ProductName, Guid StorageId, string StorageName ,int Balance, string Batch)
