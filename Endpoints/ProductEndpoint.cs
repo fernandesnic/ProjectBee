@@ -109,7 +109,7 @@ public static class ProductEndpointsExtensions
                 product.Name = dto.Name;
                 product.Desc = dto.Desc;
                 product.Price = dto.Price;
-                product.IsActive = true;
+                product.IsActive = dto.IsActive;
                 product.UpdatedAt = DateTime.Now;
 
             await db.SaveChangesAsync();

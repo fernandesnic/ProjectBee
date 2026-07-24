@@ -38,7 +38,7 @@ public record ProductResponseDTO(Guid Id, string Name, string SKU, string Desc, 
 
 
 public record CreateStorageDTO(string IdNumber, string AddressNumber, string AddressStreet, string AddressCity) : IStorageDTO;
-public record UpdateStorageDTO(string IdNumber, string AddressNumber, string AddressStreet, string AddressCity) : IStorageDTO;
+public record UpdateStorageDTO(string IdNumber, string AddressNumber, string AddressStreet, string AddressCity, bool IsActive) : IStorageDTO;
 public record StorageResponseDTO(Guid Id, string IdNumber, string AddressNumber, string AddressStreet, string AddressCity);
 
 public record CreateStockDTO(Guid ProductId, Guid StorageId, int Balance, string Batch) : IStockDTO;

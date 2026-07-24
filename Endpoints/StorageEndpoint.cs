@@ -107,7 +107,7 @@ public static class StorageEndpointsExtensions
             Storage.AddressCity = dto.AddressCity;
             Storage.AddressStreet = dto.AddressStreet;
             Storage.AddressNumber = dto.AddressNumber;
-            Storage.IsActive = true;
+            Storage.IsActive = dto.IsActive;
             Storage.UpdatedAt = DateTime.Now;
 
             await db.SaveChangesAsync();
