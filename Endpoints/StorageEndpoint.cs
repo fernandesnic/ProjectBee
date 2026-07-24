@@ -21,6 +21,7 @@ public static class StorageEndpointsExtensions
             var Storage = new Storage
             {
                 IdNumber = dto.IdNumber,
+                Name = dto.Name,
                 AddressNumber = dto.AddressNumber,
                 AddressCity = dto.AddressCity,
                 AddressStreet = dto.AddressStreet,
@@ -33,8 +34,7 @@ public static class StorageEndpointsExtensions
             db.Storages.Add(Storage);
             await db.SaveChangesAsync();
 
-            // Ordem corrigida aqui!
-            var responseDTO = new StorageResponseDTO(Storage.Id, Storage.IdNumber, Storage.AddressNumber, Storage.AddressStreet, Storage.AddressCity);
+            var responseDTO = new StorageResponseDTO(Storage.Id, Storage.Name, Storage.IdNumber, Storage.AddressNumber, Storage.AddressStreet, Storage.AddressCity);
 
             return Results.Created($"/api/storages/{Storage.Id}", responseDTO);
         });
@@ -42,9 +42,9 @@ public static class StorageEndpointsExtensions
         StoragesApi.MapGet("/", async (AppDbContext db) =>
         {
             var Storages = await db.Storages.ToListAsync();
-            // Ordem corrigida aqui!
             var responder = Storages.Select(s => new StorageResponseDTO(
                 s.Id,
+                s.Name,
                 s.IdNumber,
                 s.AddressNumber,
                 s.AddressStreet,
@@ -62,9 +62,9 @@ public static class StorageEndpointsExtensions
                 return Results.NotFound(new { mensagem = $"Armazem não encontrado" });
             }
 
-            // Ordem corrigida aqui!
             var responder = new StorageResponseDTO(
                 Storage.Id,
+                Storage.Name,
                 Storage.IdNumber,
                 Storage.AddressNumber,
                 Storage.AddressStreet,
@@ -104,6 +104,7 @@ public static class StorageEndpointsExtensions
             }
 
             Storage.IdNumber = dto.IdNumber;
+            Storage.Name = dto.Name;
             Storage.AddressCity = dto.AddressCity;
             Storage.AddressStreet = dto.AddressStreet;
             Storage.AddressNumber = dto.AddressNumber;

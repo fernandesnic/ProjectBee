@@ -30,7 +30,7 @@ public abstract class BaseStockValidator<T> : AbstractValidator<T> where T : ISt
         RuleFor(x => x.Batch)
             .NotEmpty().WithMessage("O lote é obrigatório.")
             .Matches("^[a-zA-Z0-9]+$").WithMessage("Apenas caracteres alfanuméricos são permitidos.");
-        
+       
     }
 }
 

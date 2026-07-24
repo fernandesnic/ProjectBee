@@ -49,9 +49,10 @@ public static class StockEndpointsExtensions
 
             var responder = stocks.Select(s => new StockResponseDTO(
                 s.ProductId,
-                s.Product.Name, 
+                s.Product.Name,
                 s.StorageId,
-                s.Storage.AddressStreet, 
+                s.Storage.Name,
+                $"{s.Storage.AddressStreet}, {s.Storage.AddressNumber} - {s.Storage.AddressCity}",
                 s.Balance,
                 s.Batch
             )).ToList();

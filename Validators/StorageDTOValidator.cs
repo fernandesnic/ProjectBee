@@ -11,6 +11,7 @@ public abstract class BaseStorageValidator<T> : AbstractValidator<T> where T : I
         RuleFor(x => x.AddressStreet).NotEmpty();
         RuleFor(x => x.AddressCity).NotEmpty();
         RuleFor(x => x.AddressNumber).NotEmpty();
+        RuleFor(x => x.Name).NotEmpty().MinimumLength(3);
     }
 }
 

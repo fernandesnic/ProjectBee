@@ -37,10 +37,10 @@ public record UpdateProductDTO(string Name, string SKU, string Desc, decimal Pri
 public record ProductResponseDTO(Guid Id, string Name, string SKU, string Desc, decimal Price);
 
 
-public record CreateStorageDTO(string IdNumber, string AddressNumber, string AddressStreet, string AddressCity) : IStorageDTO;
-public record UpdateStorageDTO(string IdNumber, string AddressNumber, string AddressStreet, string AddressCity, bool IsActive) : IStorageDTO;
-public record StorageResponseDTO(Guid Id, string IdNumber, string AddressNumber, string AddressStreet, string AddressCity);
+public record CreateStorageDTO(string IdNumber, string Name, string AddressNumber, string AddressStreet, string AddressCity) : IStorageDTO;
+public record UpdateStorageDTO(string IdNumber, string Name, string AddressNumber, string AddressStreet, string AddressCity, bool IsActive) : IStorageDTO;
+public record StorageResponseDTO(Guid Id, string Name, string IdNumber, string AddressNumber, string AddressStreet, string AddressCity);
 
 public record CreateStockDTO(Guid ProductId, Guid StorageId, int Balance, string Batch) : IStockDTO;
 public record UpdateStockDTO(int Balance);
-public record StockResponseDTO(Guid ProductId, string ProductName, Guid StorageId, string StorageName, int Balance, string Batch);
+public record StockResponseDTO(Guid ProductId, string ProductName, Guid StorageId, string StorageName, string StorageAddress, int Balance, string Batch);

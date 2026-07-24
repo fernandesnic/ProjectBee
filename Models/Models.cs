@@ -17,6 +17,7 @@
 public class Storage
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name {get; set;} = string.Empty;
     public string IdNumber { get; set; } = string.Empty;
     public string AddressNumber { get; set; } = string.Empty;
     public string AddressStreet { get; set; } = string.Empty;
