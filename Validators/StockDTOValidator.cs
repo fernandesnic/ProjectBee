@@ -27,6 +27,10 @@ public abstract class BaseStockValidator<T> : AbstractValidator<T> where T : ISt
             {
                 return await _db.Storages.AnyAsync(s => s.Id == id, cancellationToken);
             }).WithMessage("O Armazém informado não existe no banco de dados.");
+        RuleFor(x => x.Batch)
+            .NotEmpty().WithMessage("O lote é obrigatório.")
+            .Matches("^[a-zA-Z0-9]+$").WithMessage("Apenas caracteres alfanuméricos são permitidos.");
+        
     }
 }
 
@@ -37,9 +41,11 @@ public class CreateStockValidator : BaseStockValidator<CreateStockDTO>
     }
 }
 
-public class UpdateStockValidator : BaseStockValidator<UpdateStockDTO>
+public class UpdateStockValidator : AbstractValidator<UpdateStockDTO>
 {
-    public UpdateStockValidator(AppDbContext db) : base(db)
+    public UpdateStockValidator()
     {
+        RuleFor(x => x.Balance)
+            .GreaterThan(0).WithMessage("O saldo deve ser maior que zero.");
     }
 }

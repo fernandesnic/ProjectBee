@@ -52,9 +52,10 @@ public static class StockEndpointsExtensions
         });
 
         // 3. ENDPOINT DE ATUALIZAÇÃO (PUT)
-        stockApi.MapPut("/{productId}/{storageId}", async (
+        stockApi.MapPut("/{productId}/{storageId}/{batch}", async (
             Guid productId, 
             Guid storageId, 
+            string batch, 
             UpdateStockDTO dto, 
             IValidator<UpdateStockDTO> validator, 
             AppDbContext db) =>
@@ -68,7 +69,7 @@ public static class StockEndpointsExtensions
             }
 
             var stock = await db.StockBalances
-                .FirstOrDefaultAsync(s => s.ProductId == productId && s.StorageId == storageId);
+               .FindAsync(productId, storageId, batch);
 
             if (stock == null)
             {
@@ -76,17 +77,17 @@ public static class StockEndpointsExtensions
             }
 
             stock.Balance = dto.Balance;
-            stock.Batch = dto.Batch;
 
             await db.SaveChangesAsync();
 
             return Results.Ok(new { mensagem = "Saldo atualizado com sucesso!" });
         });
 
-        stockApi.MapDelete("/{productId}/{storageId}", async (AppDbContext db, Guid productId, Guid storageId) =>
+        stockApi.MapDelete("/{productId}/{storageId}/{batch}", async (AppDbContext db, Guid productId, Guid storageId, String batch) =>
         {
             var stock = await db.StockBalances
-                .FirstOrDefaultAsync(s => s.ProductId == productId && s.StorageId == storageId);
+                .FindAsync(productId, storageId, batch);
+
 
             if (stock == null)
             {

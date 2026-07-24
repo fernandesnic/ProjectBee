@@ -217,21 +217,30 @@ Content-Type: {{contentType}}
 GET {{host}}/api/stock
 Accept: {{contentType}}
 
-### Atualizar saldo -> espera 200 OK
-PUT {{host}}/api/stock/{{productId}}/{{storageId}}
+### Atualizar saldo do lote LOTE-2026-001 -> espera 200 OK
+PUT {{host}}/api/stock/{{productId}}/{{storageId}}/LOTE-2026-001
 Content-Type: {{contentType}}
 
 {
-  "productId": "{{productId}}",
-  "storageId": "{{storageId}}",
-  "balance": 200,
-  "batch": "LOTE-2026-001"
+  "balance": 200
 }
 
-### BUG CONHECIDO: rode o PUT acima depois de criar os dois lotes.
-### O endpoint filtra por FirstOrDefaultAsync(ProductId + StorageId),
-### ignorando o Batch, entao ele atualiza um lote arbitrario.
-### A rota precisa incluir o batch: /api/stock/{productId}/{storageId}/{batch}
+### Atualizar saldo do lote LOTE-2026-002 -> espera 200 OK
+### (prova que o lote 001 acima nao foi afetado por engano)
+PUT {{host}}/api/stock/{{productId}}/{{storageId}}/LOTE-2026-002
+Content-Type: {{contentType}}
+
+{
+  "balance": 60
+}
+
+### Lote inexistente -> espera 404 NotFound
+PUT {{host}}/api/stock/{{productId}}/{{storageId}}/LOTE-INEXISTENTE
+Content-Type: {{contentType}}
+
+{
+  "balance": 10
+}
 
 ### Produto inexistente -> espera 400 ValidationProblem
 POST {{host}}/api/stock
@@ -264,8 +273,11 @@ Content-Type: {{contentType}}
 ### LIMPEZA
 ### =====================================================
 
-### Remover saldo -> espera 204 NoContent
-DELETE {{host}}/api/stock/{{productId}}/{{storageId}}
+### Remover saldo do lote LOTE-2026-001 -> espera 204 NoContent
+DELETE {{host}}/api/stock/{{productId}}/{{storageId}}/LOTE-2026-001
+
+### Remover saldo do lote LOTE-2026-002 -> espera 204 NoContent
+DELETE {{host}}/api/stock/{{productId}}/{{storageId}}/LOTE-2026-002
 
 ### Remover armazem -> espera 204 NoContent
 DELETE {{host}}/api/storages/{{storageId}}
