@@ -18,6 +18,14 @@ public static class StockEndpointsExtensions
                 return Results.ValidationProblem(validationResult.ToDictionary());
             }
 
+           var checkStock = await db.StockBalances
+           .FindAsync(dto.ProductId, dto.StorageId, dto.Batch);
+
+            if (checkStock != null)
+            {
+                return Results.Conflict(new { mensagem = "Já existe este produto nesse lote e nesse armazem." });
+            }
+            
             var stock = new StockBalance
             {
                 ProductId = dto.ProductId,

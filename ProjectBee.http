@@ -1,4 +1,4 @@
-@host = http://localhost:5000
+ @host = http://localhost:5000
 @contentType = application/json
 
 # Cole aqui os IDs retornados pelos POSTs de criacao
@@ -213,6 +213,17 @@ Content-Type: {{contentType}}
   "batch": "LOTE-2026-002"
 }
 
+### Repetir o primeiro POST (mesmo produto+armazem+lote) -> espera 409 Conflict
+POST {{host}}/api/stock
+Content-Type: {{contentType}}
+
+{
+  "productId": "{{productId}}",
+  "storageId": "{{storageId}}",
+  "balance": 120,
+  "batch": "LOTE-2026-001"
+}
+
 ### Listar saldos com produto e armazem -> espera 200 OK
 GET {{host}}/api/stock
 Accept: {{contentType}}
@@ -263,10 +274,6 @@ Content-Type: {{contentType}}
   "balance": 0,
   "batch": "LOTE-2026-003"
 }
-
-### BUG CONHECIDO: rode o primeiro POST de estoque duas vezes.
-### A chave duplicada estoura DbUpdateException -> 500 Internal Server Error.
-### O correto seria 409 Conflict.
 
 
 ### =====================================================
