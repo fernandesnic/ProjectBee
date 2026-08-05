@@ -3,6 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using ProjectBee.Data;
 using ProjectBee.Interfaces;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Configuration;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +22,24 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 builder.Services.AddValidatorsFromAssemblyContaining<CreateProductDTOValidator>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+
+            ValidateLifetime = true,
+
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Chave JWT ausente!")))
+        };
+    });
 
 var app = builder.Build();
 
