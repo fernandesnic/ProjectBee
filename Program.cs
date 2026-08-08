@@ -5,7 +5,6 @@ using ProjectBee.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.Extensions.Configuration;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,6 +21,8 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 builder.Services.AddValidatorsFromAssemblyContaining<CreateProductDTOValidator>();
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -47,7 +48,12 @@ app.UseExceptionHandler();
 app.UseSwagger();
 app.UseSwaggerUI();
 
+app.UseAuthentication();
+
+app.UseAuthorization();
+
 app.MapGet("/", () => "API ProjectBee Online e operante!");
+
 
 app.MapProductEndpoints();
 

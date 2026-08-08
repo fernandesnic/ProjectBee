@@ -8,7 +8,7 @@ public static class ProductEndpointsExtensions
     public static void MapProductEndpoints(this IEndpointRouteBuilder app)
     {
 
-    var productsApi = app.MapGroup("/api/products");
+    var productsApi = app.MapGroup("/api/products").RequireAuthorization();
 
         productsApi.MapPost("/", async (CreateProductDTO dto, IValidator < CreateProductDTO > validator, AppDbContext db) =>
         {
