@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using ProjectBee.Data;
 using ProjectBee.Interfaces;
+using ProjectBee.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -12,7 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddIdentityCore<IdentityUser>().AddRoles<IdentityRole>().AddEntityFrameworkStores<AppDbContext>();
+builder.Services.AddIdentityCore<AppUser>().AddRoles<IdentityRole>().AddEntityFrameworkStores<AppDbContext>();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -23,6 +24,8 @@ builder.Services.AddProblemDetails();
 builder.Services.AddValidatorsFromAssemblyContaining<CreateProductDTOValidator>();
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddSingleton<TokenService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -55,6 +58,8 @@ app.UseAuthorization();
 app.MapGet("/", () => "API ProjectBee Online e operante!");
 
 
+app.MapAuthEndpoints();
+
 app.MapProductEndpoints();
 
 app.MapStorageEndpoints();
@@ -62,6 +67,9 @@ app.MapStorageEndpoints();
 app.MapStockEndpoints();
 
 app.Run();
+
+public record LoginDTO(string Email, string Password);
+public record RegisterDTO(string Nome, string Email, string Password);
 
 public record CreateProductDTO(string Name, string SKU, string Desc, decimal Price) : IProductDTO;
 public record UpdateProductDTO(string Name, string SKU, string Desc, decimal Price, bool IsActive) : IProductDTO;

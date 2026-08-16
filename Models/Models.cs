@@ -1,4 +1,12 @@
-﻿namespace ProjectBee.Models;
+﻿using Microsoft.AspNetCore.Identity;
+
+namespace ProjectBee.Models;
+
+public class AppUser : IdentityUser
+{
+    public string Nome { get; set; } = string.Empty;
+}
+
     public class Product
     {
 
