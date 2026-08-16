@@ -7,7 +7,7 @@ public static class StockEndpointsExtensions
 {
     public static void MapStockEndpoints(this IEndpointRouteBuilder app)
     {
-        var stockApi = app.MapGroup("/api/stock");
+        var stockApi = app.MapGroup("/api/stock").RequireAuthorization();
 
         stockApi.MapPost("/", async (CreateStockDTO dto, IValidator<CreateStockDTO> validator, AppDbContext db) =>
         {

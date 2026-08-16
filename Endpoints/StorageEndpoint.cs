@@ -7,7 +7,7 @@ public static class StorageEndpointsExtensions
 {
     public static void MapStorageEndpoints(this IEndpointRouteBuilder app)
     {
-        var StoragesApi = app.MapGroup("/api/storages");
+        var StoragesApi = app.MapGroup("/api/storages").RequireAuthorization();
 
         StoragesApi.MapPost("/", async (CreateStorageDTO dto, IValidator<CreateStorageDTO> validator, AppDbContext db) =>
         {
