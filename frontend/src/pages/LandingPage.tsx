@@ -1,33 +1,142 @@
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 const GITHUB_URL = 'https://github.com/fernandesnic/ProjectBee'
-const SWAGGER_URL = 'http://localhost:5054/swagger'
+const GITHUB_PROFILE_URL = 'https://github.com/fernandesnic'
+const LINKEDIN_URL = 'https://linkedin.com/in/fernandesnic'
 
-const STACK = [
-  '.NET 10',
-  'ASP.NET Core',
-  'Entity Framework Core',
-  'SQL Server',
-  'JWT',
-  'FluentValidation',
-  'React',
+const SWAGGER_URL: string | undefined =
+  import.meta.env.VITE_SWAGGER_URL ??
+  (import.meta.env.DEV ? 'http://localhost:5054/swagger' : undefined)
+
+const NAV_LINKS = [
+  { href: '#modulos', label: 'Módulos' },
+  { href: '#como-funciona', label: 'Como funciona' },
+  { href: '#tecnico', label: 'Detalhes técnicos' },
 ]
 
-const DIFFERENTIALS = [
+const STACK_DECISIONS = [
   {
-    title: 'Chave composta',
-    description:
-      'Saldo não é um campo do produto — é uma entidade própria, com chave primária composta por produto, armazém e lote. O mesmo item existe em quantidades diferentes, em locais diferentes, sem perder rastreabilidade.',
+    tech: '.NET 10 + ASP.NET Core Minimal APIs',
+    reason:
+      'Poucas rotas por módulo ainda não justificam o peso de controllers — dá pra migrar pra eles quando a complexidade pedir.',
   },
   {
-    title: 'Validação assíncrona de SKU',
-    description:
-      'Cada SKU precisa ser único. A validação consulta o banco antes da escrita, prevenindo duplicidade sem depender só de uma constraint silenciosa.',
+    tech: 'Entity Framework Core',
+    reason:
+      'Migrations versionadas em vez de script de banco solto, e LINQ tipado em vez de SQL escrito à mão em cada endpoint.',
   },
   {
-    title: 'Erros padronizados (RFC 7807)',
+    tech: 'SQL Server',
+    reason:
+      'Banco relacional com integridade forte — chave composta e precisão decimal garantidas pelo schema, não simuladas em código.',
+  },
+  {
+    tech: 'ASP.NET Core Identity + JWT',
+    reason:
+      'Identity cuida de hash de senha e cadastro de usuário; JWT evita guardar sessão no servidor entre requisições.',
+  },
+  {
+    tech: 'FluentValidation',
+    reason:
+      'Regra de validação separada do DTO e do endpoint — mais fácil de testar e de reaproveitar entre criação e atualização.',
+  },
+  {
+    tech: 'React',
+    reason:
+      'Frontend consumindo a API como qualquer outro cliente, sem acoplar interface ao backend.',
+  },
+]
+
+const DEMO_ROWS = [
+  { produto: 'Mel Silvestre 500g', sku: 'MEL-500-SIL', armazem: 'SP1', lote: 'LOTE-2026-001', saldo: 120 },
+  { produto: 'Mel Silvestre 500g', sku: 'MEL-500-SIL', armazem: 'SRQ', lote: 'LOTE-2026-002', saldo: 45 },
+  { produto: 'Própolis Extrato 30ml', sku: 'PROP-30-EXT', armazem: 'SP1', lote: 'LOTE-2026-004', saldo: 310 },
+  { produto: 'Cera de Abelha 1kg', sku: 'CERA-1000', armazem: 'SRQ', lote: 'LOTE-2026-003', saldo: 18 },
+]
+
+const PAIN_POINTS = [
+  'Você compra o que já tinha parado em outro armazém.',
+  'Vende o que não tem e descobre na hora de separar.',
+  'O lote vence no fundo do galpão porque ninguém sabia que estava lá.',
+]
+
+const STEPS = [
+  {
+    title: 'Cadastre produtos e armazéns',
     description:
-      'Toda falha da API responde no formato ProblemDetails — exceções não tratadas e falhas de validação seguem o mesmo contrato, previsível para quem consome.',
+      'Defina onde cada produto pode existir e comece a rastrear por lote desde a primeira entrada.',
+  },
+  {
+    title: 'Registre entradas e saídas',
+    description:
+      'Toda movimentação atualiza o saldo na hora, direto na base que o resto do sistema vai consumir.',
+  },
+  {
+    title: 'Acompanhe o saldo consolidado',
+    description:
+      'Veja quanto tem, onde tem e em qual lote, por armazém ou no total da operação.',
+  },
+]
+
+const MODULES = [
+  {
+    status: 'Disponível',
+    title: 'Estoque multi-armazém',
+    description:
+      'Saldo por produto, armazém e lote, sempre atualizado. É a base sobre a qual os próximos módulos vão rodar.',
+    active: true,
+  },
+  {
+    status: 'Planejado',
+    title: 'Faturamento',
+    description:
+      'Emissão de nota consumindo o saldo do estoque direto, sem passar dado de um sistema pro outro na mão.',
+    active: false,
+  },
+  {
+    status: 'Planejado',
+    title: 'Financeiro',
+    description:
+      'Contas a pagar, a receber e fluxo de caixa alimentados pelo que acontece no faturamento e no estoque.',
+    active: false,
+  },
+]
+
+const DONE = [
+  'Saldo de estoque com chave composta (produto + armazém + lote)',
+  'CRUD de produtos e armazéns',
+  'Login e registro com Identity, token JWT com claims de role',
+  'Validação assíncrona de SKU duplicado antes de gravar',
+  'Erros da API padronizados em ProblemDetails (RFC 7807)',
+]
+
+const NEXT = [
+  'Autorização por perfil nas rotas de escrita (hoje é só "autenticado")',
+  'Módulo de faturamento consumindo o saldo do estoque',
+  'Dashboard financeiro: contas a pagar/receber, fluxo de caixa',
+]
+
+const DECISIONS = [
+  {
+    title: 'Saldo é uma entidade própria, não um campo do produto',
+    description:
+      'A chave é composta por produto, armazém e lote. Dava pra modelar como um número solto no produto, mas aí o mesmo item não poderia existir em quantidades diferentes, em lugares diferentes, sem gambiarra.',
+  },
+  {
+    title: 'Erro de API sempre no mesmo formato (RFC 7807)',
+    description:
+      'Falha de validação e exceção não tratada respondem com a mesma estrutura de erro. Quem consome a API não precisa tratar cada tipo de falha de um jeito diferente.',
+  },
+  {
+    title: 'SKU é validado antes de gravar, não só na constraint do banco',
+    description:
+      'Uma unique constraint garante integridade, mas devolve erro genérico. Consultar o banco antes permite responder com uma mensagem que faz sentido pra quem está cadastrando.',
+  },
+  {
+    title: 'Perfis de acesso já no token, antes de ter rota que os use',
+    description:
+      'O JWT carrega a role do usuário desde o primeiro módulo, mesmo sem nenhuma rota diferenciando operador de gestor ainda. A ideia é não ter que voltar na autenticação quando isso virar necessário.',
   },
 ]
 
@@ -43,17 +152,109 @@ function Logo() {
   return (
     <span className="inline-flex items-center gap-2 font-semibold text-lg tracking-tight">
       <svg viewBox="0 0 48 48" className="h-7 w-7">
-        <polygon points="24,3 43,14 43,34 24,45 5,34 5,14" fill="var(--color-hive)" />
+        <polygon points="24,3 43,14 43,34 24,45 5,34 5,14" className="fill-hive" />
         <polygon
           points="24,10 37,17.5 37,32.5 24,40 11,32.5 11,17.5"
-          fill="none"
-          stroke="var(--color-honey)"
+          className="fill-none stroke-honey"
           strokeWidth="2.5"
         />
-        <circle cx="24" cy="25" r="4.5" fill="var(--color-honey)" />
+        <circle cx="24" cy="25" r="4.5" className="fill-honey" />
       </svg>
       ProjectBee
     </span>
+  )
+}
+
+type SectionProps = {
+  id?: string
+  eyebrow: string
+  title: string
+  tone?: 'light' | 'dark'
+  spacing?: 'tight' | 'normal' | 'loose'
+  className?: string
+  children: ReactNode
+}
+
+const SECTION_PADDING = {
+  tight: 'py-16',
+  normal: 'py-20',
+  loose: 'py-24',
+}
+
+function Section({
+  id,
+  eyebrow,
+  title,
+  tone = 'light',
+  spacing = 'normal',
+  className = '',
+  children,
+}: SectionProps) {
+  const eyebrowColor = tone === 'dark' ? 'text-honey-light' : 'text-honey-dark'
+  const titleColor = tone === 'dark' ? 'text-cream' : 'text-ink'
+
+  const borderColor = tone === 'dark' ? 'border-cream/10' : 'border-line'
+
+  return (
+    <section id={id} className={`scroll-mt-20 border-b ${borderColor} ${className}`}>
+      <div className={`mx-auto max-w-6xl px-6 ${SECTION_PADDING[spacing]}`}>
+        <p className={`text-sm font-semibold uppercase tracking-widest ${eyebrowColor}`}>
+          {eyebrow}
+        </p>
+        <h2
+          className={`mt-4 max-w-2xl text-3xl font-bold leading-tight tracking-tight sm:text-4xl ${titleColor}`}
+        >
+          {title}
+        </h2>
+        {children}
+      </div>
+    </section>
+  )
+}
+
+function DemoTable() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-cream/10 bg-cream text-ink shadow-2xl shadow-black/30">
+      <div className="flex items-center justify-between border-b border-line px-5 py-3">
+        <span className="text-xs font-semibold uppercase tracking-widest text-ink-muted">
+          Saldo por armazém
+        </span>
+        <span className="flex gap-1">
+          <span className="h-2 w-2 rounded-full bg-line" />
+          <span className="h-2 w-2 rounded-full bg-line" />
+          <span className="h-2 w-2 rounded-full bg-honey" />
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead>
+            <tr className="border-b border-line text-ink-muted">
+              <th className="px-5 py-2 font-medium">Produto</th>
+              <th className="px-3 py-2 font-medium">Armazém</th>
+              <th className="hidden px-3 py-2 font-medium sm:table-cell">Lote</th>
+              <th className="px-5 py-2 text-right font-medium">Saldo</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {DEMO_ROWS.map((row) => (
+              <tr key={`${row.sku}-${row.armazem}-${row.lote}`}>
+                <td className="px-5 py-3">
+                  <div className="font-medium text-ink">{row.produto}</div>
+                  <div className="text-ink-muted">{row.sku}</div>
+                </td>
+                <td className="px-3 py-3 font-mono text-ink-muted">{row.armazem}</td>
+                <td className="hidden px-3 py-3 font-mono text-ink-muted sm:table-cell">
+                  {row.lote}
+                </td>
+                <td className="px-5 py-3 text-right font-semibold tabular-nums text-ink">
+                  {row.saldo}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }
 
@@ -65,18 +266,15 @@ function LandingPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Logo />
           <nav className="flex items-center gap-6">
-            <a
-              href="#sobre"
-              className="hidden text-sm text-ink-muted transition hover:text-ink sm:inline"
-            >
-              Sobre
-            </a>
-            <a
-              href="#stack"
-              className="hidden text-sm text-ink-muted transition hover:text-ink sm:inline"
-            >
-              Tecnologia
-            </a>
+            {NAV_LINKS.map(({ href, label }) => (
+              <a
+                key={href}
+                href={href}
+                className="hidden text-sm text-ink-muted transition hover:text-ink sm:inline"
+              >
+                {label}
+              </a>
+            ))}
             <Link
               to="/login"
               className="rounded-full border border-line px-4 py-1.5 text-sm font-medium text-ink transition hover:border-honey-dark hover:text-honey-dark"
@@ -87,133 +285,258 @@ function LandingPage() {
         </div>
       </header>
 
+      {/* ================= PARTE 1 — PRODUTO ================= */}
+
       {/* Hero */}
       <section className="relative overflow-hidden bg-hive text-cream">
         <Hex className="pointer-events-none absolute -right-16 -top-24 h-80 w-80 fill-none stroke-honey/15 stroke-[1.5]" />
         <Hex className="pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 fill-none stroke-honey/10 stroke-[1.5]" />
-        <Hex className="pointer-events-none absolute right-24 bottom-10 hidden h-16 w-16 fill-none stroke-honey/20 stroke-[2] lg:block" />
 
-        <div className="relative mx-auto max-w-6xl px-6 py-28 sm:py-36">
-          <span className="inline-flex items-center rounded-full border border-honey/30 bg-honey/10 px-3 py-1 text-xs font-medium tracking-wide text-honey-light">
-            Sistema de gestão de estoque
-          </span>
+        <div className="relative mx-auto grid max-w-6xl gap-14 px-6 py-24 sm:py-28 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-12">
+          <div>
+            <span className="inline-flex items-center rounded-full border border-honey/30 bg-honey/10 px-3 py-1 text-xs font-medium tracking-wide text-honey-light">
+              Controle de estoque multi-armazém
+            </span>
 
-          <h1 className="mt-6 max-w-2xl text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl">
-            O estoque não mente.
-          </h1>
+            <h1 className="mt-6 text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl">
+              Saiba exatamente quanto você tem, em cada armazém, agora.
+            </h1>
 
-          <p className="mt-6 max-w-xl text-lg text-cream/70 sm:text-xl">
-            ProjectBee controla o saldo de produtos distribuídos entre múltiplos
-            armazéns, com rastreabilidade completa por lote.
-          </p>
+            <p className="mt-6 max-w-xl text-lg text-cream/70 sm:text-xl">
+              ProjectBee centraliza o saldo dos seus produtos por armazém e
+              lote em um só lugar, sempre atualizado.
+            </p>
 
-          <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">
-            <Link
-              to="/login"
-              className="inline-flex items-center rounded-full bg-honey px-7 py-3 font-semibold text-hive shadow-lg shadow-honey/20 transition hover:bg-honey-light"
-            >
-              Acessar sistema
-            </Link>
-            <a
-              href={GITHUB_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm font-medium text-cream/60 underline decoration-cream/30 underline-offset-4 transition hover:text-cream"
-            >
-              Ver repositório no GitHub ↗
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* Sobre o problema */}
-      <section id="sobre" className="border-b border-line bg-cream">
-        <div className="mx-auto max-w-6xl px-6 py-24">
-          <div className="grid gap-14 lg:grid-cols-2 lg:items-center">
-            <div>
-              <h2 className="text-sm font-semibold uppercase tracking-widest text-honey-dark">
-                O problema
-              </h2>
-              <p className="mt-4 text-3xl font-bold leading-tight tracking-tight text-ink sm:text-4xl">
-                Controlar estoque é simples até existir mais de um armazém.
-              </p>
-              <p className="mt-6 text-lg leading-relaxed text-ink-muted">
-                A partir daí, o mesmo produto passa a existir em quantidades
-                diferentes, em locais diferentes, muitas vezes com lotes e
-                validades distintas. ProjectBee modela esse cenário desde a
-                base: o saldo é rastreado por produto, armazém e lote — não um
-                número solto associado ao item.
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center gap-3 rounded-2xl border border-line bg-cream-soft p-10 sm:flex-row sm:justify-center sm:gap-0">
-              {(['Produto', 'Armazém', 'Lote'] as const).map((label, i) => (
-                <div key={label} className="flex items-center gap-0 sm:contents">
-                  <div className="relative flex h-24 w-24 shrink-0 items-center justify-center">
-                    <Hex className="absolute inset-0 h-full w-full fill-hive/5 stroke-honey-dark stroke-[1.5]" />
-                    <span className="relative text-sm font-semibold text-ink">
-                      {label}
-                    </span>
-                  </div>
-                  {i < 2 && (
-                    <span className="mx-2 rotate-90 text-honey-dark sm:mx-4 sm:rotate-0">
-                      →
-                    </span>
-                  )}
-                </div>
-              ))}
+            <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">
+              <Link
+                to="/login?demo=1"
+                className="inline-flex items-center rounded-full bg-honey px-7 py-3 font-semibold text-hive shadow-lg shadow-honey/20 transition hover:bg-honey-light"
+              >
+                Entrar na demo
+              </Link>
+              <a
+                href="#como-funciona"
+                className="text-sm font-medium text-cream/60 underline decoration-cream/30 underline-offset-4 transition hover:text-cream"
+              >
+                Ver como funciona ↓
+              </a>
             </div>
           </div>
+
+          <DemoTable />
         </div>
       </section>
 
-      {/* Stack técnica */}
-      <section id="stack" className="border-b border-line bg-cream-soft">
-        <div className="mx-auto max-w-6xl px-6 py-16">
-          <p className="text-center text-sm font-medium text-ink-muted">
-            Construído com tecnologia usada em produção
-          </p>
-          <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
-            {STACK.map((tech) => (
-              <li
-                key={tech}
-                className="flex items-center gap-2 text-sm font-medium text-ink-muted"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-honey-dark/60" />
-                {tech}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+      {/* O problema */}
+      <Section
+        eyebrow="O problema"
+        title="Cada armazém novo é uma nova fonte de erro."
+        spacing="tight"
+        className="bg-cream"
+      >
+        <ul className="mt-8 max-w-xl space-y-4">
+          {PAIN_POINTS.map((point) => (
+            <li key={point} className="flex items-start gap-3 text-base leading-relaxed text-ink">
+              <Hex className="mt-1 h-3.5 w-3.5 shrink-0 fill-honey-dark" />
+              {point}
+            </li>
+          ))}
+        </ul>
+      </Section>
 
-      {/* Diferenciais */}
-      <section id="diferenciais" className="bg-cream">
-        <div className="mx-auto max-w-6xl px-6 py-24">
-          <h2 className="text-sm font-semibold uppercase tracking-widest text-honey-dark">
-            Diferenciais
-          </h2>
-          <p className="mt-4 max-w-xl text-3xl font-bold leading-tight tracking-tight text-ink sm:text-4xl">
-            Regras que fazem o estoque valer confiança.
-          </p>
-
-          <div className="mt-14 grid gap-8 md:grid-cols-3">
-            {DIFFERENTIALS.map((item, i) => (
-              <div
-                key={item.title}
-                className="rounded-2xl border border-line bg-cream-soft p-8"
-              >
-                <span className="text-xs font-semibold text-honey-dark">
-                  {String(i + 1).padStart(2, '0')}
+      {/* Como funciona */}
+      <Section
+        id="como-funciona"
+        eyebrow="Como funciona"
+        title='Três passos entre "não sei" e "sei exatamente".'
+        className="bg-cream"
+      >
+        <div className="mt-14 grid gap-8 md:grid-cols-3">
+          {STEPS.map((step, i) => (
+            <div key={step.title}>
+              <div className="relative flex h-10 w-10 items-center justify-center">
+                <Hex className="absolute inset-0 h-full w-full fill-honey/15" />
+                <span className="relative text-sm font-semibold text-honey-dark">
+                  {i + 1}
                 </span>
-                <h3 className="mt-3 text-lg font-semibold text-ink">
-                  {item.title}
-                </h3>
+              </div>
+              <h3 className="mt-4 text-lg font-semibold text-ink">
+                {step.title}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-ink-muted">
+                {step.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* Módulos */}
+      <Section
+        id="modulos"
+        eyebrow="Módulos"
+        title="Comece pelo estoque. Cresça pro financeiro."
+        spacing="loose"
+        className="bg-cream"
+      >
+        <div className="mt-14 grid items-start gap-6 md:grid-cols-3">
+          {MODULES.map((mod) => {
+            const styles = mod.active
+              ? {
+                  card: 'border-honey-dark/40 bg-cream-soft p-8 shadow-md shadow-honey/10',
+                  badge: 'bg-honey/15 text-honey-dark',
+                  title: 'text-lg font-semibold text-ink',
+                }
+              : {
+                  card: 'border-dashed border-line p-6 opacity-70',
+                  badge: 'bg-line/50 text-ink-muted',
+                  title: 'text-base font-medium text-ink-muted',
+                }
+
+            return (
+              <div key={mod.title} className={`relative rounded-2xl border ${styles.card}`}>
+                <span
+                  className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${styles.badge}`}
+                >
+                  {mod.status}
+                </span>
+                <h3 className={`mt-4 ${styles.title}`}>{mod.title}</h3>
                 <p className="mt-3 text-sm leading-relaxed text-ink-muted">
-                  {item.description}
+                  {mod.description}
                 </p>
               </div>
-            ))}
+            )
+          })}
+        </div>
+      </Section>
+
+      {/* CTA final */}
+      <section className="bg-honey">
+        <div className="mx-auto max-w-6xl px-6 py-16 text-center">
+          <p className="text-2xl font-bold tracking-tight text-hive sm:text-3xl">
+            Não descubra o furo no estoque na hora de separar o pedido.
+          </p>
+          <Link
+            to="/login?demo=1"
+            className="mt-8 inline-flex items-center rounded-full bg-hive px-7 py-3 font-semibold text-cream shadow-lg transition hover:bg-hive-soft"
+          >
+            Acessar o sistema
+          </Link>
+        </div>
+      </section>
+
+      {/* ================= DIVISOR ================= */}
+      <div
+        id="tecnico"
+        className="scroll-mt-20 border-y border-cream/10 bg-ink py-3 text-center text-xs font-medium uppercase tracking-widest text-cream/40"
+      >
+        A partir daqui, os bastidores técnicos do projeto
+      </div>
+
+      {/* ================= PARTE 2 — DETALHES TÉCNICOS ================= */}
+
+      <Section
+        eyebrow="Detalhes técnicos"
+        title="Sem framework de ERP pronto por trás."
+        className="bg-cream"
+      >
+        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink-muted">
+          Backend em .NET 10 com Minimal APIs, EF Core e SQL Server; frontend
+          em React. Projeto pessoal, em desenvolvimento — e o estado abaixo é
+          honesto: o que já está de pé e o que ainda falta.
+        </p>
+
+        <div className="mt-10 grid gap-10 md:grid-cols-2">
+          <div>
+            <h3 className="text-sm font-semibold text-ink-muted">Pronto</h3>
+            <ul className="mt-4 space-y-3">
+              {DONE.map((item) => (
+                <li key={item} className="flex gap-3 text-sm leading-relaxed text-ink">
+                  <span className="mt-0.5 shrink-0 text-honey-dark">✓</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-ink-muted">Próximo</h3>
+            <ul className="mt-4 space-y-3">
+              {NEXT.map((item) => (
+                <li key={item} className="flex gap-3 text-sm leading-relaxed text-ink-muted">
+                  <span className="mt-0.5 shrink-0 text-ink-muted/50">→</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </Section>
+
+      {/* Decisões técnicas */}
+      <Section
+        eyebrow="Decisões técnicas"
+        title="Por que foi construído assim."
+        tone="dark"
+        className="bg-hive text-cream"
+      >
+        <div className="mt-10 grid gap-8 md:grid-cols-2">
+          {DECISIONS.map((item) => (
+            <div key={item.title}>
+              <h3 className="text-base font-semibold text-cream">
+                {item.title}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-cream/60">
+                {item.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* Stack técnica */}
+      <Section eyebrow="Stack" title="Por que cada peça, e não outra." className="bg-cream-soft">
+        <div className="mt-10 grid gap-8 sm:grid-cols-2">
+          {STACK_DECISIONS.map((item) => (
+            <div key={item.tech}>
+              <h3 className="text-sm font-semibold text-ink">
+                {item.tech}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-ink-muted">
+                {item.reason}
+              </p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* Assinatura */}
+      <section className="border-b border-line bg-cream">
+        <div className="mx-auto max-w-6xl px-6 py-14">
+          <p className="max-w-2xl text-sm leading-relaxed text-ink-muted">
+            Construído por{' '}
+            <span className="font-semibold text-ink">Nicolas Fernandes</span>,
+            desenvolvedor com background em ERP (Protheus/AdvPL) migrando
+            para .NET e React. As regras de negócio aqui vêm de anos vendo
+            estoque dar errado em sistema de verdade.
+          </p>
+          <div className="mt-4 flex gap-6 text-sm font-medium">
+            <a
+              href={LINKEDIN_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-honey-dark transition hover:text-ink"
+            >
+              LinkedIn
+            </a>
+            <a
+              href={GITHUB_PROFILE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-honey-dark transition hover:text-ink"
+            >
+              GitHub (perfil)
+            </a>
           </div>
         </div>
       </section>
@@ -230,17 +553,18 @@ function LandingPage() {
                 rel="noopener noreferrer"
                 className="font-medium text-cream/80 transition hover:text-honey-light"
               >
-                GitHub ↗
+                Repositório ↗
               </a>
-              <a
-                href={SWAGGER_URL}
-                className="font-medium text-cream/80 transition hover:text-honey-light"
-              >
-                Documentação da API (Swagger) ↗
-                <span className="ml-1 text-xs font-normal text-cream/40">
-                  requer execução local
-                </span>
-              </a>
+              {SWAGGER_URL && (
+                <a
+                  href={SWAGGER_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-cream/80 transition hover:text-honey-light"
+                >
+                  Documentação da API (Swagger) ↗
+                </a>
+              )}
             </div>
           </div>
           <p className="mt-10 text-xs text-cream/40">
