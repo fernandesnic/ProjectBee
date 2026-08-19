@@ -77,7 +77,7 @@ O saldo não é um campo dentro do produto. É uma entidade própria com **chave
 | `PUT` | `/api/stock/{productId}/{storageId}` | Atualiza saldo | `200` `400` `404` |
 | `DELETE` | `/api/stock/{productId}/{storageId}` | Remove saldo | `204` `404` |
 
-> O arquivo [`ProjectBee.http`](./ProjectBee.http) contém requisições prontas para todos os endpoints, incluindo os casos de erro. Abra no Visual Studio ou VS Code e execute direto.
+> O arquivo [`ProjectBee.http`](./backend/ProjectBee.http) contém requisições prontas para todos os endpoints, incluindo os casos de erro. Abra no Visual Studio ou VS Code e execute direto.
 
 ---
 
@@ -116,14 +116,17 @@ O saldo não é um campo dentro do produto. É uma entidade própria com **chave
 
 ```
 ProjectBee/
-├── Data/           # AppDbContext e configuração do modelo
-├── DTOs/           # Contratos de entrada e saída
-├── Endpoints/      # Mapeamento HTTP por módulo
-├── Interfaces/     # Contratos compartilhados entre DTOs
-├── Middlewares/    # Tratamento global de exceções
-├── Migrations/     # Histórico do schema (EF Core)
-├── Models/         # Entidades de domínio
-└── Validators/     # Regras de validação (FluentValidation)
+├── backend/        # API .NET
+│   ├── Data/           # AppDbContext e configuração do modelo
+│   ├── DTOs/            # Contratos de entrada e saída
+│   ├── Endpoints/       # Mapeamento HTTP por módulo
+│   ├── Interfaces/      # Contratos compartilhados entre DTOs
+│   ├── Middlewares/     # Tratamento global de exceções
+│   ├── Migrations/      # Histórico do schema (EF Core)
+│   ├── Models/          # Entidades de domínio
+│   ├── Services/        # Serviços de aplicação (ex.: geração de JWT)
+│   └── Validators/      # Regras de validação (FluentValidation)
+└── frontend/       # Client (planejado)
 ```
 
 ---
@@ -134,7 +137,7 @@ ProjectBee/
 
 ```bash
 git clone https://github.com/fernandesnic/ProjectBee.git
-cd ProjectBee
+cd ProjectBee/backend
 ```
 
 Configure a connection string via User Secrets, para não versionar credenciais:
