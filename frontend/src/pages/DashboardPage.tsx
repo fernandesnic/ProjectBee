@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { clearToken, getToken } from '../services/token'
 
 function decodeEmailFromToken(token: string): string | null {
   try {
@@ -16,7 +17,7 @@ function DashboardPage() {
   const [email, setEmail] = useState<string | null>(null)
 
   useEffect(() => {
-    const token = localStorage.getItem('projectbee_token')
+    const token = getToken()
     if (!token) {
       navigate('/login')
       return
@@ -25,7 +26,7 @@ function DashboardPage() {
   }, [navigate])
 
   function handleLogout() {
-    localStorage.removeItem('projectbee_token')
+    clearToken()
     navigate('/')
   }
 
