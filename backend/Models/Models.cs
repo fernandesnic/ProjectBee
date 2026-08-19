@@ -16,8 +16,8 @@ public class AppUser : IdentityUser
     public string Desc { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public bool IsActive { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
-    public DateTime UpdatedAt { get; set; } 
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
 
 }
@@ -31,7 +31,7 @@ public class Storage
     public string AddressStreet { get; set; } = string.Empty;
     public string AddressCity { get; set; } = string.Empty;
     public bool IsActive { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
 
