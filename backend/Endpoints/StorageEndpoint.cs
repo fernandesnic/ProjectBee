@@ -7,7 +7,8 @@ public static class StorageEndpointsExtensions
 {
     public static void MapStorageEndpoints(this IEndpointRouteBuilder app)
     {
-        var StoragesApi = app.MapGroup("/api/storages").RequireAuthorization();
+        var StoragesApi = app.MapGroup("/api/storages")
+            .RequireAuthorization(policy => policy.RequireRole(Roles.Operator, Roles.Manager));
 
         StoragesApi.MapPost("/", async (CreateStorageDTO dto, IValidator<CreateStorageDTO> validator, AppDbContext db) =>
         {
@@ -27,8 +28,8 @@ public static class StorageEndpointsExtensions
                 AddressStreet = dto.AddressStreet,
                 Id = Guid.NewGuid(),
                 IsActive = true,
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             db.Storages.Add(Storage);
@@ -37,7 +38,8 @@ public static class StorageEndpointsExtensions
             var responseDTO = new StorageResponseDTO(Storage.Id, Storage.Name, Storage.IdNumber, Storage.AddressNumber, Storage.AddressStreet, Storage.AddressCity);
 
             return Results.Created($"/api/storages/{Storage.Id}", responseDTO);
-        });
+        })
+        .RequireAuthorization(policy => policy.RequireRole(Roles.Manager));
 
         StoragesApi.MapGet("/", async (AppDbContext db) =>
         {
@@ -86,7 +88,8 @@ public static class StorageEndpointsExtensions
             await db.SaveChangesAsync();
 
             return Results.NoContent();
-        });
+        })
+        .RequireAuthorization(policy => policy.RequireRole(Roles.Manager));
 
         StoragesApi.MapPut("/{id}", async (UpdateStorageDTO dto, IValidator<UpdateStorageDTO> validator, AppDbContext db, Guid id) =>
         {
@@ -109,11 +112,12 @@ public static class StorageEndpointsExtensions
             Storage.AddressStreet = dto.AddressStreet;
             Storage.AddressNumber = dto.AddressNumber;
             Storage.IsActive = dto.IsActive;
-            Storage.UpdatedAt = DateTime.Now;
+            Storage.UpdatedAt = DateTime.UtcNow;
 
             await db.SaveChangesAsync();
 
             return Results.Ok(new { mensagem = $"Armazem atualizado com sucesso" });
-        });
+        })
+        .RequireAuthorization(policy => policy.RequireRole(Roles.Manager));
     }
 }

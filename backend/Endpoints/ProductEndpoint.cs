@@ -8,7 +8,8 @@ public static class ProductEndpointsExtensions
     public static void MapProductEndpoints(this IEndpointRouteBuilder app)
     {
 
-    var productsApi = app.MapGroup("/api/products").RequireAuthorization();
+    var productsApi = app.MapGroup("/api/products")
+            .RequireAuthorization(policy => policy.RequireRole(Roles.Operator, Roles.Manager));
 
         productsApi.MapPost("/", async (CreateProductDTO dto, IValidator < CreateProductDTO > validator, AppDbContext db) =>
         {
@@ -28,8 +29,8 @@ public static class ProductEndpointsExtensions
                 Price = dto.Price,
                 Id = Guid.NewGuid(),
                 IsActive = true,
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             db.Products.Add(product);
@@ -38,7 +39,8 @@ public static class ProductEndpointsExtensions
             var responseDTO = new ProductResponseDTO(product.Id, product.Name, product.SKU, product.Desc, product.Price);
 
             return Results.Created($"/api/products/{product.Id}", responseDTO);
-        });
+        })
+        .RequireAuthorization(policy => policy.RequireRole(Roles.Manager));
 
 
         productsApi.MapGet("/", async (AppDbContext db) =>
@@ -89,7 +91,8 @@ public static class ProductEndpointsExtensions
 
             return Results.NoContent();
 
-        });
+        })
+        .RequireAuthorization(policy => policy.RequireRole(Roles.Manager));
 
         productsApi.MapPut("/{id}", async (UpdateProductDTO dto, IValidator < UpdateProductDTO > validator, AppDbContext db, Guid id) =>
         {
@@ -110,13 +113,14 @@ public static class ProductEndpointsExtensions
                 product.Desc = dto.Desc;
                 product.Price = dto.Price;
                 product.IsActive = dto.IsActive;
-                product.UpdatedAt = DateTime.Now;
+                product.UpdatedAt = DateTime.UtcNow;
 
             await db.SaveChangesAsync();
 
             return Results.Ok(new {mensagem = $"Produto atualizado com sucesso"});
 
-        });
+        })
+        .RequireAuthorization(policy => policy.RequireRole(Roles.Manager));
 
     }
 }

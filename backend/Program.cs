@@ -10,6 +10,16 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendDev", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -47,6 +57,42 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+    foreach (var role in new[] { Roles.Manager, Roles.Operator })
+    {
+        if (!await roleManager.RoleExistsAsync(role))
+        {
+            await roleManager.CreateAsync(new IdentityRole(role));
+        }
+    }
+
+    const string demoEmail = "demo@projectbee.dev";
+    var demoUser = await userManager.FindByEmailAsync(demoEmail);
+
+    if (demoUser is null)
+    {
+        demoUser = new AppUser
+        {
+            UserName = demoEmail,
+            Email = demoEmail,
+            Nome = "Usuário Demo",
+            EmailConfirmed = true,
+        };
+
+        await userManager.CreateAsync(demoUser, "Demo@1234");
+    }
+
+    if (!await userManager.IsInRoleAsync(demoUser, Roles.Manager))
+    {
+        await userManager.AddToRoleAsync(demoUser, Roles.Manager);
+    }
+}
+
+app.UseCors("FrontendDev");
 app.UseExceptionHandler();
 app.UseSwagger();
 app.UseSwaggerUI();

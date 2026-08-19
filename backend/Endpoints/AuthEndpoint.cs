@@ -30,7 +30,7 @@ public static class AuthEndpointsExtensions
             return Results.Ok(new { token });
         });
 
-        authApi.MapPost("/register", async (RegisterDTO dto, UserManager<AppUser> userManager) =>
+        authApi.MapPost("/register", async (RegisterDTO dto, UserManager<AppUser> userManager, RoleManager<IdentityRole> roleManager) =>
         {
             var usuarioExistente = await userManager.FindByEmailAsync(dto.Email);
 
@@ -59,6 +59,13 @@ public static class AuthEndpointsExtensions
 
                 return Results.ValidationProblem(erros);
             }
+
+            if (!await roleManager.RoleExistsAsync(Roles.Operator))
+            {
+                await roleManager.CreateAsync(new IdentityRole(Roles.Operator));
+            }
+
+            await userManager.AddToRoleAsync(user, Roles.Operator);
 
             return Results.Ok(new { user.Id, user.Nome, user.Email });
         });
