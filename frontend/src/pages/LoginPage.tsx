@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5054'
+import { API_BASE_URL, login } from '../services/api'
+import { saveToken } from '../services/token'
 
 function LoginPage() {
   const navigate = useNavigate()
@@ -20,11 +20,8 @@ function LoginPage() {
     setLoading(true)
 
     try {
-      const { data } = await axios.post<{ token: string }>(`${API_URL}/api/auth/login`, {
-        Email: email,
-        Password: password,
-      })
-      localStorage.setItem('projectbee_token', data.token)
+      const { token } = await login({ email, password })
+      saveToken(token)
       navigate('/app')
     } catch (err) {
       if (axios.isAxiosError(err)) {
@@ -33,7 +30,7 @@ function LoginPage() {
         } else if (err.response) {
           setError(`Erro no servidor (${err.response.status}). Tente novamente.`)
         } else {
-          setError(`Não foi possível conectar à API em ${API_URL}. Ela está rodando?`)
+          setError(`Não foi possível conectar à API em ${API_BASE_URL}. Ela está rodando?`)
         }
       } else {
         setError('Erro inesperado. Tente novamente.')
