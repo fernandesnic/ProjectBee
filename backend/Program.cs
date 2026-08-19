@@ -83,7 +83,12 @@ using (var scope = app.Services.CreateScope())
             EmailConfirmed = true,
         };
 
-        await userManager.CreateAsync(demoUser, "Demo@1234");
+        var result = await userManager.CreateAsync(demoUser, "Demo@1234");
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException(
+                $"Falha ao criar usuário demo: {string.Join("; ", result.Errors.Select(e => e.Description))}");
+        }
     }
 
     if (!await userManager.IsInRoleAsync(demoUser, Roles.Manager))
