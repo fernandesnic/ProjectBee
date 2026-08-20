@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
+import { useOutletContext } from 'react-router-dom'
 import { deleteProduct, getProducts, type Product } from '../services/api'
 import { ProductTable } from '../components/ProductTable'
+import type { AppLayoutContext } from '../components/AppLayout'
 
 function currency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 function ProductsPage() {
+  const { roles } = useOutletContext<AppLayoutContext>()
+  const canManage = roles.includes('Manager')
+
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -67,7 +72,7 @@ function ProductsPage() {
         {loading ? (
           <p className="text-sm text-ink-muted">Carregando produtos...</p>
         ) : (
-          <ProductTable products={products} onDelete={handleDelete} />
+          <ProductTable products={products} onDelete={canManage ? handleDelete : undefined} />
         )}
       </div>
     </div>

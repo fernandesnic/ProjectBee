@@ -2,7 +2,7 @@ import type { Product } from '../services/api'
 
 interface ProductTableProps {
   products: Product[]
-  onDelete: (id: string) => void
+  onDelete?: (id: string) => void
 }
 
 export function ProductTable({ products, onDelete }: ProductTableProps) {
@@ -17,7 +17,7 @@ export function ProductTable({ products, onDelete }: ProductTableProps) {
           <th className="py-2 font-medium">Nome</th>
           <th className="py-2 font-medium">SKU</th>
           <th className="py-2 font-medium">Preço</th>
-          <th className="py-2" />
+          {onDelete && <th className="py-2" />}
         </tr>
       </thead>
       <tbody className="divide-y divide-line">
@@ -28,14 +28,16 @@ export function ProductTable({ products, onDelete }: ProductTableProps) {
             <td className="py-2 tabular-nums text-ink">
               {product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </td>
-            <td className="py-2 text-right">
-              <button
-                onClick={() => onDelete(product.id)}
-                className="text-red-600 transition hover:underline"
-              >
-                Remover
-              </button>
-            </td>
+            {onDelete && (
+              <td className="py-2 text-right">
+                <button
+                  onClick={() => onDelete(product.id)}
+                  className="text-red-600 transition hover:underline"
+                >
+                  Remover
+                </button>
+              </td>
+            )}
           </tr>
         ))}
       </tbody>

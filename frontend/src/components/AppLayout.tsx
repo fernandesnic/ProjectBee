@@ -1,15 +1,9 @@
-import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { clearToken, getToken } from '../services/token'
+import { Link, NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom'
+import { clearToken, decodeToken, getToken } from '../services/token'
 
-function decodeEmailFromToken(token: string): string | null {
-  try {
-    const payload = token.split('.')[1]
-    const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
-    return (JSON.parse(decoded) as { email?: string }).email ?? null
-  } catch {
-    return null
-  }
+export interface AppLayoutContext {
+  email?: string
+  roles: string[]
 }
 
 const NAV_ITEMS = [
@@ -21,16 +15,13 @@ const PLANNED_ITEMS = ['Faturamento', 'Financeiro']
 
 function AppLayout() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState<string | null>(null)
+  const token = getToken()
 
-  useEffect(() => {
-    const token = getToken()
-    if (!token) {
-      navigate('/login')
-      return
-    }
-    setEmail(decodeEmailFromToken(token))
-  }, [navigate])
+  if (!token) {
+    return <Navigate to="/login" replace />
+  }
+
+  const { email, roles } = decodeToken(token)
 
   function handleLogout() {
     clearToken()
@@ -84,7 +75,7 @@ function AppLayout() {
                 Logado como <span className="font-medium text-ink">{email}</span>
               </>
             ) : (
-              'Carregando...'
+              'Sessão ativa'
             )}
           </p>
           <button
@@ -96,7 +87,7 @@ function AppLayout() {
         </header>
 
         <main className="p-8">
-          <Outlet />
+          <Outlet context={{ email, roles } satisfies AppLayoutContext} />
         </main>
       </div>
     </div>
