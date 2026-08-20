@@ -9,8 +9,10 @@ function LoginPage() {
   const [searchParams] = useSearchParams()
   const isDemo = searchParams.get('demo') === '1'
 
+  const demoPassword = import.meta.env.VITE_DEMO_PASSWORD ?? 'Demo@1234'
+
   const [email, setEmail] = useState(isDemo ? 'demo@projectbee.dev' : '')
-  const [password, setPassword] = useState(isDemo ? 'Demo@1234' : '')
+  const [password, setPassword] = useState(isDemo ? demoPassword : '')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -97,7 +99,7 @@ function LoginPage() {
         {!isDemo && (
           <p className="mt-6 text-xs text-ink-muted">
             Acesso de demonstração: <span className="font-mono">demo@projectbee.dev</span> ·{' '}
-            <span className="font-mono">Demo@1234</span>
+            <span className="font-mono">{demoPassword}</span>
           </p>
         )}
       </div>
