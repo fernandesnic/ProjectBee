@@ -54,7 +54,6 @@ Content-Type: {{contentType}}
 
 {
   "name": "Mel Silvestre 500g - Safra 2026",
-  "sku": "MEL-500-SIL",
   "desc": "Mel silvestre puro, safra 2026, pote de vidro 500g",
   "price": 39.90,
   "isActive": true
