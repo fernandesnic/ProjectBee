@@ -59,8 +59,8 @@ var app = builder.Build();
 
 await app.SeedIdentityAsync();
 
-app.UseCors("FrontendDev");
 app.UseExceptionHandler();
+app.UseCors("FrontendDev");
 app.UseSwagger();
 app.UseSwaggerUI();
 
