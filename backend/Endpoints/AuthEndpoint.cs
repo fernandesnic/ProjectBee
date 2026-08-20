@@ -9,6 +9,11 @@ public static class AuthEndpointsExtensions
 
         authApi.MapPost("/login", async (LoginDTO dto, UserManager<AppUser> userManager, TokenService tokenService) =>
         {
+            if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
+            {
+                return Results.Unauthorized();
+            }
+
             var user = await userManager.FindByEmailAsync(dto.Email);
 
             if (user == null)
@@ -32,6 +37,14 @@ public static class AuthEndpointsExtensions
 
         authApi.MapPost("/register", async (RegisterDTO dto, UserManager<AppUser> userManager, RoleManager<IdentityRole> roleManager) =>
         {
+            if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["Email"] = ["Email e senha são obrigatórios"]
+                });
+            }
+
             var usuarioExistente = await userManager.FindByEmailAsync(dto.Email);
 
             if (usuarioExistente != null)
