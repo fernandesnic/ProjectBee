@@ -3,6 +3,7 @@ import axios from 'axios'
 import { useOutletContext } from 'react-router-dom'
 import { deleteProduct, getProducts, type Product } from '../services/api'
 import { ProductTable } from '../components/ProductTable'
+import { ProductForm } from '../components/ProductForm'
 import type { AppLayoutContext } from '../components/AppLayout'
 
 function currency(value: number) {
@@ -16,6 +17,7 @@ function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
 
   useEffect(() => {
     getProducts()
@@ -45,7 +47,29 @@ function ProductsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight text-ink">Produtos</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight text-ink">Produtos</h1>
+        {canManage && !showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="rounded-full bg-honey px-5 py-2 text-sm font-semibold text-hive transition hover:bg-honey-light"
+          >
+            Novo produto
+          </button>
+        )}
+      </div>
+
+      {canManage && showForm && (
+        <div className="mt-6 rounded-2xl border border-line bg-cream-soft p-6">
+          <ProductForm
+            onCreated={(product) => {
+              setProducts((current) => [...current, product])
+              setShowForm(false)
+            }}
+            onCancel={() => setShowForm(false)}
+          />
+        </div>
+      )}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <div className="rounded-2xl border border-line bg-cream-soft p-6">
