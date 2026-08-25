@@ -45,14 +45,16 @@ public static class ProductEndpointsExtensions
 
         productsApi.MapGet("/", async (AppDbContext db) =>
         {
-            var products = await db.Products.ToListAsync();
-            var responder = products.Select(p => new ProductResponseDTO(
-                p.Id,
-                p.Name,
-                p.SKU,
-                p.Desc,
-                p.Price
-                )).ToList();
+            var responder = await db.Products
+                .AsNoTracking()
+                .Select(p => new ProductResponseDTO(
+                    p.Id,
+                    p.Name,
+                    p.SKU,
+                    p.Desc,
+                    p.Price
+                    ))
+                .ToListAsync();
 
             return Results.Ok(responder);
 
@@ -60,18 +62,22 @@ public static class ProductEndpointsExtensions
 
         productsApi.MapGet("/{id}", async (AppDbContext db, Guid id) =>
         {
-            var product = await db.Products.FindAsync(id);
-            if (product == null)
+            var responder = await db.Products
+                .AsNoTracking()
+                .Where(p => p.Id == id)
+                .Select(p => new ProductResponseDTO(
+                    p.Id,
+                    p.Name,
+                    p.SKU,
+                    p.Desc,
+                    p.Price
+                    ))
+                .FirstOrDefaultAsync();
+
+            if (responder == null)
             {
                 return Results.NotFound(new { mensagem = $"Produto não encontrado" });
             }
-            var responder = new ProductResponseDTO(
-                product.Id,
-                product.Name,
-                product.SKU,
-                product.Desc,
-                product.Price
-                );
 
             return Results.Ok(responder);
 

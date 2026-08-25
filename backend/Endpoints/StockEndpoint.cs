@@ -43,20 +43,18 @@ public static class StockEndpointsExtensions
 
         stockApi.MapGet("/", async (AppDbContext db) =>
         {
-            var stocks = await db.StockBalances
-                .Include(s => s.Product)
-                .Include(s => s.Storage)
+            var responder = await db.StockBalances
+                .AsNoTracking()
+                .Select(s => new StockResponseDTO(
+                    s.ProductId,
+                    s.Product.Name,
+                    s.StorageId,
+                    s.Storage.Name,
+                    $"{s.Storage.AddressStreet}, {s.Storage.AddressNumber} - {s.Storage.AddressCity}",
+                    s.Balance,
+                    s.Batch
+                ))
                 .ToListAsync();
-
-            var responder = stocks.Select(s => new StockResponseDTO(
-                s.ProductId,
-                s.Product.Name,
-                s.StorageId,
-                s.Storage.Name,
-                $"{s.Storage.AddressStreet}, {s.Storage.AddressNumber} - {s.Storage.AddressCity}",
-                s.Balance,
-                s.Batch
-            )).ToList();
 
             return Results.Ok(responder);
         });

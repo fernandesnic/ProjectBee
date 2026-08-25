@@ -30,7 +30,9 @@ O foco do projeto não é quantidade de endpoints, e sim modelagem correta: chav
 | ORM | Entity Framework Core 10 (Code-First + Migrations) |
 | Banco | SQL Server |
 | Validação | FluentValidation |
+| Auth | ASP.NET Core Identity + JWT Bearer, com roles (`Operator` / `Manager`) |
 | Documentação | Swagger / OpenAPI (Swashbuckle) |
+| Frontend | React 19 + TypeScript, Vite, React Router, Tailwind, Axios |
 
 ---
 
@@ -72,10 +74,21 @@ O saldo não é um campo dentro do produto. É uma entidade própria com **chave
 
 | Método | Rota | Descrição | Respostas |
 |---|---|---|---|
-| `POST` | `/api/stock` | Registra saldo | `200` `400` |
+| `POST` | `/api/stock` | Registra saldo | `200` `400` `409` |
 | `GET` | `/api/stock` | Lista saldos com produto e armazém | `200` |
-| `PUT` | `/api/stock/{productId}/{storageId}` | Atualiza saldo | `200` `400` `404` |
-| `DELETE` | `/api/stock/{productId}/{storageId}` | Remove saldo | `204` `404` |
+| `PUT` | `/api/stock/{productId}/{storageId}/{batch}` | Atualiza saldo | `200` `400` `404` |
+| `DELETE` | `/api/stock/{productId}/{storageId}/{batch}` | Remove saldo | `204` `404` |
+
+> A chave de um saldo é produto + armazém + **lote**, não só produto + armazém — por isso o `{batch}` faz parte da rota.
+
+### Autenticação
+
+| Método | Rota | Descrição | Respostas |
+|---|---|---|---|
+| `POST` | `/api/auth/login` | Autentica e retorna um JWT | `200` `401` |
+| `POST` | `/api/auth/register` | Cadastra usuário (requer role `Manager`) | `200` `400` `401` `403` |
+
+Todos os endpoints de produtos, armazéns e estoque exigem um Bearer token válido (`Operator` ou `Manager`). Em produtos e armazéns, escrita (`POST`/`PUT`/`DELETE`) exige role `Manager`. Em estoque, registrar e atualizar saldo (`POST`/`PUT`) aceita `Operator` — é operação do dia a dia —, mas remover um lançamento (`DELETE`) exige `Manager`.
 
 > O arquivo [`ProjectBee.http`](./backend/ProjectBee.http) contém requisições prontas para todos os endpoints, incluindo os casos de erro. Abra no Visual Studio ou VS Code e execute direto.
 
@@ -112,6 +125,14 @@ O saldo não é um campo dentro do produto. É uma entidade própria com **chave
 
 ---
 
+## Frontend
+
+Client em React + TypeScript (Vite) que consome a API: login, listagem e cadastro de produtos, com as ações de escrita (cadastrar, editar, remover) visíveis apenas para quem tem role `Manager`.
+
+O token JWT fica salvo no cliente e é anexado automaticamente nas requisições por um interceptor do Axios; um 401 fora da tela de login (sessão expirada) desloga e redireciona — a própria tela de login trata seu 401 (senha inválida) sem disparar esse redirecionamento.
+
+---
+
 ## Estrutura
 
 ```
@@ -120,32 +141,38 @@ ProjectBee/
 │   ├── Data/           # AppDbContext e configuração do modelo
 │   ├── DTOs/            # Contratos de entrada e saída
 │   ├── Endpoints/       # Mapeamento HTTP por módulo
+│   ├── Filters/         # Filtros do Swagger/OpenAPI
 │   ├── Interfaces/      # Contratos compartilhados entre DTOs
 │   ├── Middlewares/     # Tratamento global de exceções
 │   ├── Migrations/      # Histórico do schema (EF Core)
 │   ├── Models/          # Entidades de domínio
 │   ├── Services/        # Serviços de aplicação (ex.: geração de JWT)
 │   └── Validators/      # Regras de validação (FluentValidation)
-└── frontend/       # Client (planejado)
+└── frontend/       # Client React + TypeScript
+    └── src/
+        ├── components/  # Navbar, AppLayout, ProductForm, ProductTable
+        ├── pages/       # LandingPage, LoginPage, DashboardPage, ProductsPage
+        └── services/    # Cliente Axios (api.ts) e armazenamento do token
 ```
 
 ---
 
 ## Executando localmente
 
-**Pré-requisitos:** [.NET SDK 10](https://dotnet.microsoft.com/download) e SQL Server (LocalDB, Express ou Docker).
+**Pré-requisitos:** [.NET SDK 10](https://dotnet.microsoft.com/download), [Node.js 20+](https://nodejs.org/) e SQL Server (LocalDB, Express ou Docker).
 
 ```bash
 git clone https://github.com/fernandesnic/ProjectBee.git
 cd ProjectBee/backend
 ```
 
-Configure a connection string via User Secrets, para não versionar credenciais:
+Configure a connection string e a senha do usuário demo via User Secrets, para não versionar credenciais:
 
 ```bash
 dotnet user-secrets init
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
   "Server=localhost;Database=ProjectBeeDB;Trusted_Connection=True;TrustServerCertificate=True;"
+dotnet user-secrets set "Demo:Password" "Demo@1234"
 ```
 
 Crie o banco e suba a aplicação:
@@ -158,18 +185,31 @@ dotnet run
 
 A API sobe em `http://localhost:5054`. O Swagger fica em **http://localhost:5054/swagger**.
 
+Em outro terminal, suba o frontend:
+
+```bash
+cd frontend
+cp .env.example .env.local   # ajuste VITE_API_URL se a API não estiver em localhost:5054
+npm install
+npm run dev
+```
+
+O client sobe em `http://localhost:5173`.
+
+> **Deploy:** a origem liberada no CORS vem de `Cors:AllowedOrigins` (`appsettings.json`), e não é mais fixa em `localhost:5173` — em produção, defina via variável de ambiente (`Cors__AllowedOrigins__0`) apontando para a URL do frontend publicado. A senha do usuário demo (`Demo:Password`) também precisa de um App Setting equivalente (`Demo__Password`) — sem ele a API só falha ao subir num banco limpo, então teste isso antes do deploy.
+
 ---
 
 ## Roadmap
 
 - [ ] Livro-razão de movimentações (entrada, saída, transferência, ajuste) com saldo derivado
 - [ ] Controle de concorrência otimista para impedir saldo negativo em requisições simultâneas
-- [ ] Índice único de SKU no banco, além da validação na aplicação
+- [x] Índice único de SKU no banco, além da validação na aplicação
 - [ ] Soft delete e paginação nas listagens
-- [ ] Autenticação JWT com perfis de acesso (operador / gerente)
+- [x] Autenticação JWT com perfis de acesso (operador / gerente)
 - [ ] Rate limiting e log de auditoria
 - [ ] Testes unitários e de integração
-- [ ] Front-end em React + TypeScript
+- [x] Front-end em React + TypeScript
 - [ ] Docker Compose e deploy com demo pública
 
 ---
@@ -178,7 +218,8 @@ A API sobe em `http://localhost:5054`. O Swagger fica em **http://localhost:5054
 
 **Nicolas Fernandes**
 
-[LinkedIn](https://linkedin.com/in/SEU-USUARIO) · [GitHub](https://github.com/fernandesnic)
+<!-- TODO: adicionar link do LinkedIn -->
+[GitHub](https://github.com/fernandesnic)
 
 ---
 

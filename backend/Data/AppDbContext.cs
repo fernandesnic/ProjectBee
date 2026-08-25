@@ -23,5 +23,8 @@ public class AppDbContext : IdentityDbContext<AppUser>
 
         modelBuilder.Entity<Product>().Property(x => x.Price).HasPrecision(14, 2);
 
+        modelBuilder.Entity<Product>().Property(x => x.SKU).HasMaxLength(15);
+        modelBuilder.Entity<Product>().HasIndex(x => x.SKU).IsUnique();
+
     }
 }

@@ -43,35 +43,40 @@ public static class StorageEndpointsExtensions
 
         StoragesApi.MapGet("/", async (AppDbContext db) =>
         {
-            var Storages = await db.Storages.ToListAsync();
-            var responder = Storages.Select(s => new StorageResponseDTO(
-                s.Id,
-                s.Name,
-                s.IdNumber,
-                s.AddressNumber,
-                s.AddressStreet,
-                s.AddressCity
-                )).ToList();
+            var responder = await db.Storages
+                .AsNoTracking()
+                .Select(s => new StorageResponseDTO(
+                    s.Id,
+                    s.Name,
+                    s.IdNumber,
+                    s.AddressNumber,
+                    s.AddressStreet,
+                    s.AddressCity
+                    ))
+                .ToListAsync();
 
             return Results.Ok(responder);
         });
 
         StoragesApi.MapGet("/{id}", async (AppDbContext db, Guid id) =>
         {
-            var Storage = await db.Storages.FindAsync(id);
-            if (Storage == null)
+            var responder = await db.Storages
+                .AsNoTracking()
+                .Where(s => s.Id == id)
+                .Select(s => new StorageResponseDTO(
+                    s.Id,
+                    s.Name,
+                    s.IdNumber,
+                    s.AddressNumber,
+                    s.AddressStreet,
+                    s.AddressCity
+                    ))
+                .FirstOrDefaultAsync();
+
+            if (responder == null)
             {
                 return Results.NotFound(new { mensagem = $"Armazem não encontrado" });
             }
-
-            var responder = new StorageResponseDTO(
-                Storage.Id,
-                Storage.Name,
-                Storage.IdNumber,
-                Storage.AddressNumber,
-                Storage.AddressStreet,
-                Storage.AddressCity
-                );
 
             return Results.Ok(responder);
         });
