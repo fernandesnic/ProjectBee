@@ -38,4 +38,9 @@ public class CreateProductDTOValidator : BaseProductValidator<CreateProductDTO>
 
 public class UpdateProductDTOValidator : BaseProductValidator<UpdateProductDTO>
 {
+    public UpdateProductDTOValidator()
+    {
+        RuleFor(x => x.IsActive)
+            .NotNull().WithMessage("IsActive é obrigatório na atualização.");
+    }
 }

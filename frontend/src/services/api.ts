@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { clearToken, getToken } from './token'
+import { navigateTo } from './navigation'
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5054'
 
@@ -26,7 +27,7 @@ api.interceptors.response.use(
 
       if (!veioDoLogin) {
         clearToken()
-        window.location.href = '/login'
+        navigateTo('/login')   
       }
     }
     return Promise.reject(error)

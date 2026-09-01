@@ -36,7 +36,7 @@ public static class ProductEndpointsExtensions
             db.Products.Add(product);
             await db.SaveChangesAsync();
 
-            var responseDTO = new ProductResponseDTO(product.Id, product.Name, product.SKU, product.Desc, product.Price);
+            var responseDTO = new ProductResponseDTO(product.Id, product.Name, product.SKU, product.Desc, product.Price, product.IsActive);
 
             return Results.Created($"/api/products/{product.Id}", responseDTO);
         })
@@ -52,7 +52,8 @@ public static class ProductEndpointsExtensions
                     p.Name,
                     p.SKU,
                     p.Desc,
-                    p.Price
+                    p.Price,
+                    p.IsActive
                     ))
                 .ToListAsync();
 
@@ -70,7 +71,8 @@ public static class ProductEndpointsExtensions
                     p.Name,
                     p.SKU,
                     p.Desc,
-                    p.Price
+                    p.Price,
+                    p.IsActive
                     ))
                 .FirstOrDefaultAsync();
 
@@ -118,7 +120,7 @@ public static class ProductEndpointsExtensions
                 product.Name = dto.Name;
                 product.Desc = dto.Desc;
                 product.Price = dto.Price;
-                product.IsActive = dto.IsActive;
+                product.IsActive = dto.IsActive!.Value;
                 product.UpdatedAt = DateTime.UtcNow;
 
             await db.SaveChangesAsync();

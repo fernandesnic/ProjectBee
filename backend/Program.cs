@@ -103,8 +103,9 @@ public record LoginDTO(string Email, string Password);
 public record RegisterDTO(string Nome, string Email, string Password);
 
 public record CreateProductDTO(string Name, string SKU, string Desc, decimal Price) : IProductDTO;
-public record UpdateProductDTO(string Name, string Desc, decimal Price, bool IsActive) : IProductDTO;
-public record ProductResponseDTO(Guid Id, string Name, string SKU, string Desc, decimal Price);
+public record UpdateProductDTO(string Name, string Desc, decimal Price, bool? IsActive) : IProductDTO;
+
+public record ProductResponseDTO(Guid Id, string Name, string SKU, string Desc, decimal Price, bool IsActive);
 
 
 public record CreateStorageDTO(string IdNumber, string Name, string AddressNumber, string AddressStreet, string AddressCity) : IStorageDTO;
