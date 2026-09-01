@@ -81,7 +81,9 @@ public static class AuthEndpointsExtensions
             await userManager.AddToRoleAsync(user, Roles.Operator);
 
             return Results.Ok(new { user.Id, user.Nome, user.Email });
-        })
-        .RequireAuthorization(policy => policy.RequireRole(Roles.Manager));
+        });
+        // Endpoint intencionalmente público: permite que visitantes do portfólio
+        // testem o fluxo de auth sem precisar da conta demo seedada.
+        //.RequireAuthorization(policy => policy.RequireRole(Roles.Manager));
     }
 }
