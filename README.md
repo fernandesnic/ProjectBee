@@ -61,9 +61,11 @@ Autenticação via ASP.NET Core Identity + JWT Bearer, com dois perfis:
 | Método | Rota | Descrição | Autorização |
 |---|---|---|---|
 | `POST` | `/api/auth/login` | Autentica e retorna o JWT | Público |
-| `POST` | `/api/auth/register` | Cria novo usuário (perfil Operator) | Manager |
+| `POST` | `/api/auth/register` | Cria novo usuário (perfil Operator) | Público* |
 
-O registro exige um Manager autenticado — criação de usuário passa por aprovação, não por auto-cadastro. As roles são atribuídas pelo servidor, nunca escolhidas pelo próprio usuário no payload.
+As roles são atribuídas pelo servidor, nunca escolhidas pelo próprio usuário no payload — auto-atribuição de privilégio é anti-padrão de segurança.
+
+> \* **Decisão consciente de portfólio.** Em um sistema real, `/register` ficaria restrito a `Manager`: criação de usuário passa por aprovação, não por auto-cadastro. Mantive o endpoint aberto aqui para que quem visita o projeto consiga testar o fluxo completo de autenticação sem depender da conta demo. A trava está no código, comentada, com a justificativa registrada.
 
 Um usuário demo com perfil Manager é criado no startup (`IdentitySeed`), com a senha vindo de configuração (`Demo:Password`), nunca do código-fonte.
 
@@ -111,6 +113,7 @@ Um usuário demo com perfil Manager é criado no startup (`IdentitySeed`), com a
 - SKU no padrão `^[A-Z0-9-]{3,15}$` — apenas maiúsculas, dígitos e hífen
 - SKU único: validado na aplicação **e** garantido por índice único no banco
 - SKU é imutável: não faz parte do contrato de atualização
+- `IsActive` é obrigatório na atualização (`bool?` no DTO + `NotNull` no validator): omitir o campo desativaria o produto silenciosamente, já que o default de `bool` é `false`
 
 **Armazéns**
 - Código identificador e número do endereço são strings, não inteiros — endereços reais de galpão não cabem em `int` (`"S/N"`, `"1250-A"`)
@@ -141,6 +144,8 @@ Um usuário demo com perfil Manager é criado no startup (`IdentitySeed`), com a
 **Swagger com cadeado seletivo.** Um `IOperationFilter` inspeciona a metadata de cada endpoint e adiciona o requisito de segurança apenas onde há autorização, em vez de marcar a API inteira como protegida.
 
 **Erros padronizados em RFC 7807.** Um `IExceptionHandler` global converte exceções não tratadas em `ProblemDetails`, com detalhe técnico exposto apenas em desenvolvimento. Falhas de validação retornam `ValidationProblem`, no mesmo formato.
+
+**Escopo consciente: cadastro aberto.** `POST /api/auth/register` é público, contrariando o que seria correto em produção. É uma escolha de portfólio: sem isso, avaliar o controle de acesso do projeto dependeria de credenciais compartilhadas. A linha que aplicaria a restrição (`RequireAuthorization` com perfil `Manager`) está no código, comentada, para deixar explícito que a omissão é deliberada e não esquecimento.
 
 **Escopo consciente: single-tenant.** O projeto assume um único cliente por instância. Um cenário multi-tenant real exigiria uma coluna `TenantId` nas entidades principais e filtro por tenant em todo o `DbContext` — mudança estrutural de modelagem, não configuração pontual. Ficou fora do escopo para manter o foco na modelagem de estoque em si.
 
@@ -220,7 +225,7 @@ O frontend sobe em `http://localhost:5173` e aponta para `http://localhost:5054`
 
 - [ ] Endpoint de health check
 - [ ] Seed de dados de demonstração (produtos e armazéns)
-- [ ] Edição de produtos no frontend
+- [ ] KPI de valor total do estoque (preço × saldo, agregado no banco)
 - [ ] Telas de Armazéns e Estoque no frontend
 - [ ] Livro-razão de movimentações (entrada, saída, transferência, ajuste) com saldo derivado
 - [ ] Controle de concorrência otimista para impedir saldo negativo em requisições simultâneas
