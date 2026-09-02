@@ -1,33 +1,56 @@
 import { useState, type FormEvent } from 'react'
 import axios from 'axios'
-import { createProduct, type CreateProductPayload, type Product } from '../services/api'
-
+import {
+  createProduct,
+  updateProduct,
+  type CreateProductPayload,
+  type Product,
+} from '../services/api'
 interface ProductFormProps {
-  onCreated: (product: Product) => void
+  product?: Product              // ausente = criação | presente = edição
+  onSaved: (product: Product) => void
   onCancel: () => void
 }
 
-const EMPTY_FORM: CreateProductPayload = { name: '', sku: '', desc: '', price: 0 }
+type FormState = CreateProductPayload & { isActive: boolean }
 
-export function ProductForm({ onCreated, onCancel }: ProductFormProps) {
-  const [form, setForm] = useState<CreateProductPayload>(EMPTY_FORM)
+export function ProductForm({ product, onSaved, onCancel }: ProductFormProps) {
+  const isEditing = Boolean(product)
+
+  const [form, setForm] = useState<FormState>({
+    name: product?.name ?? '',
+    sku: product?.sku ?? '',
+    desc: product?.desc ?? '',
+    price: product?.price ?? 0,
+    isActive: product?.isActive ?? true,
+  })
+
   const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [submitting, setSubmitting] = useState(false)
 
-  async function handleSubmit(event: FormEvent) {
+    async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setErrors({})
     setSubmitting(true)
 
     try {
-      const product = await createProduct(form)
-      onCreated(product)
-      setForm(EMPTY_FORM)
+      if (product) {
+        await updateProduct(product.id, {
+          name: form.name,
+          desc: form.desc,
+          price: form.price,
+          isActive: form.isActive,
+        })
+        onSaved({ ...product, ...form })
+      } else {
+        const created = await createProduct(form)
+        onSaved(created)
+      }
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 400) {
         setErrors(err.response.data?.errors ?? {})
       } else {
-        setErrors({ geral: ['Não foi possível criar o produto.'] })
+        setErrors({ geral: ['Não foi possível salvar o produto.'] })
       }
     } finally {
       setSubmitting(false)
@@ -61,12 +84,18 @@ export function ProductForm({ onCreated, onCancel }: ProductFormProps) {
           SKU
         </label>
         <input
-          id="sku"
-          required
-          value={form.sku}
-          onChange={(event) => setForm((current) => ({ ...current, sku: event.target.value }))}
-          className="mt-1 w-full rounded-lg border border-line bg-cream px-3 py-2 text-sm text-ink outline-none transition focus:border-honey-dark"
-        />
+            id="sku"
+            required
+            disabled={isEditing}
+            value={form.sku}
+            onChange={(event) => setForm((current) => ({ ...current, sku: event.target.value }))}
+            className={`mt-1 w-full rounded-lg border border-line bg-cream px-3 py-2 text-sm text-ink outline-none transition focus:border-honey-dark ${
+              isEditing ? 'cursor-not-allowed opacity-60' : ''
+            }`}
+          />
+          {isEditing && (
+            <p className="mt-1 text-xs text-ink-muted">O SKU não pode ser alterado.</p>
+          )}
         {fieldErrors('SKU')}
       </div>
 
@@ -102,6 +131,23 @@ export function ProductForm({ onCreated, onCancel }: ProductFormProps) {
         />
         {fieldErrors('Price')}
       </div>
+      
+      {isEditing && (
+      <div className="flex items-center gap-2 self-end pb-2">
+        <input
+          id="isActive"
+          type="checkbox"
+          checked={form.isActive}
+          onChange={(event) =>
+            setForm((current) => ({ ...current, isActive: event.target.checked }))
+          }
+          className="h-4 w-4 rounded border-line accent-honey"
+        />
+        <label htmlFor="isActive" className="text-sm font-medium text-ink-muted">
+          Produto ativo
+        </label>
+      </div>
+    )}
 
       {fieldErrors('geral')}
 
@@ -111,8 +157,9 @@ export function ProductForm({ onCreated, onCancel }: ProductFormProps) {
           disabled={submitting}
           className="rounded-full bg-honey px-6 py-2 text-sm font-semibold text-hive transition hover:bg-honey-light disabled:opacity-60"
         >
-          {submitting ? 'Criando...' : 'Criar produto'}
+        {submitting ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Criar produto'}        
         </button>
+        
         <button
           type="button"
           onClick={onCancel}

@@ -54,6 +54,7 @@ export interface Product {
   sku: string
   desc: string
   price: number
+  isActive: boolean
 }
 
 export interface CreateProductPayload {
@@ -61,6 +62,13 @@ export interface CreateProductPayload {
   sku: string
   desc: string
   price: number
+}
+
+export interface UpdateProductPayload {
+  name: string
+  desc: string
+  price: number
+  isActive: boolean
 }
 
 export async function getProducts() {
@@ -71,6 +79,10 @@ export async function getProducts() {
 export async function createProduct(payload: CreateProductPayload) {
   const { data } = await api.post<Product>('/api/products', payload)
   return data
+}
+
+export async function updateProduct(id: string, payload: UpdateProductPayload) {
+  await api.put(`/api/products/${id}`, payload)
 }
 
 export async function deleteProduct(id: string) {

@@ -6,6 +6,8 @@ import { ProductTable } from '../components/ProductTable'
 import { ProductForm } from '../components/ProductForm'
 import type { AppLayoutContext } from '../components/AppLayout'
 
+type FormMode = { type: 'closed' } | { type: 'create' } | { type: 'edit'; product: Product }
+
 function currency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
@@ -17,7 +19,7 @@ function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showForm, setShowForm] = useState(false)
+  const [formMode, setFormMode] = useState<FormMode>({ type: 'closed' })
 
   useEffect(() => {
     getProducts()
@@ -40,6 +42,16 @@ function ProductsPage() {
     }
   }
 
+    function handleSaved(saved: Product) {
+    setProducts((current) => {
+      const exists = current.some((p) => p.id === saved.id)
+      return exists
+        ? current.map((p) => (p.id === saved.id ? saved : p))
+        : [...current, saved]
+    })
+    setFormMode({ type: 'closed' })
+  }
+
   const averagePrice =
     products.length > 0
       ? products.reduce((sum, product) => sum + product.price, 0) / products.length
@@ -49,9 +61,9 @@ function ProductsPage() {
     <div>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-ink">Produtos</h1>
-        {canManage && !showForm && (
+       {canManage && formMode.type === 'closed' && (
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => setFormMode({ type: 'create' })}
             className="rounded-full bg-honey px-5 py-2 text-sm font-semibold text-hive transition hover:bg-honey-light"
           >
             Novo produto
@@ -59,14 +71,13 @@ function ProductsPage() {
         )}
       </div>
 
-      {canManage && showForm && (
+      {canManage && formMode.type !== 'closed' && (
         <div className="mt-6 rounded-2xl border border-line bg-cream-soft p-6">
           <ProductForm
-            onCreated={(product) => {
-              setProducts((current) => [...current, product])
-              setShowForm(false)
-            }}
-            onCancel={() => setShowForm(false)}
+            key={formMode.type === 'edit' ? formMode.product.id : 'create'}
+            product={formMode.type === 'edit' ? formMode.product : undefined}
+            onSaved={handleSaved}
+            onCancel={() => setFormMode({ type: 'closed' })}
           />
         </div>
       )}
@@ -96,7 +107,11 @@ function ProductsPage() {
         {loading ? (
           <p className="text-sm text-ink-muted">Carregando produtos...</p>
         ) : (
-          <ProductTable products={products} onDelete={canManage ? handleDelete : undefined} />
+          <ProductTable
+            products={products}
+            onEdit={canManage ? (product) => setFormMode({ type: 'edit', product }) : undefined}
+            onDelete={canManage ? handleDelete : undefined}
+          />
         )}
       </div>
     </div>

@@ -2,11 +2,12 @@ import type { Product } from '../services/api'
 
 interface ProductTableProps {
   products: Product[]
+  onEdit?: (product: Product) => void
   onDelete?: (id: string) => void
 }
 
-export function ProductTable({ products, onDelete }: ProductTableProps) {
-  if (products.length === 0) {
+export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) {
+    if (products.length === 0) {
     return <p className="text-sm text-ink-muted">Nenhum produto cadastrado.</p>
   }
 
@@ -17,7 +18,7 @@ export function ProductTable({ products, onDelete }: ProductTableProps) {
           <th className="py-2 font-medium">Nome</th>
           <th className="py-2 font-medium">SKU</th>
           <th className="py-2 font-medium">Preço</th>
-          {onDelete && <th className="py-2" />}
+          {(onEdit || onDelete) && <th className="py-2" />}
         </tr>
       </thead>
       <tbody className="divide-y divide-line">
@@ -28,14 +29,26 @@ export function ProductTable({ products, onDelete }: ProductTableProps) {
             <td className="py-2 tabular-nums text-ink">
               {product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </td>
-            {onDelete && (
+            {(onEdit || onDelete) && (
               <td className="py-2 text-right">
-                <button
-                  onClick={() => onDelete(product.id)}
-                  className="text-red-600 transition hover:underline"
-                >
-                  Remover
-                </button>
+                <div className="flex justify-end gap-4">
+                  {onEdit && (
+                    <button
+                      onClick={() => onEdit(product)}
+                      className="text-ink-muted transition hover:text-honey-dark hover:underline"
+                    >
+                      Editar
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      onClick={() => onDelete(product.id)}
+                      className="text-red-600 transition hover:underline"
+                    >
+                      Remover
+                    </button>
+                  )}
+                </div>
               </td>
             )}
           </tr>
