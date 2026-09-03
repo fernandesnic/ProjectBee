@@ -25,8 +25,8 @@ public abstract class BaseStockValidator<T> : AbstractValidator<T> where T : ISt
             .NotEmpty().WithMessage("O Id do armazem é obrigatório.") 
             .MustAsync(async (id, cancellationToken) =>
             {
-                return await _db.Storages.AnyAsync(s => s.Id == id, cancellationToken);
-            }).WithMessage("O Armazém informado não existe no banco de dados.");
+                return await _db.Storages.AnyAsync(s => s.Id == id && s.IsActive, cancellationToken);
+            }).WithMessage("O Armazém informado não existe ou está inativo.");
         RuleFor(x => x.Batch)
             .NotEmpty().WithMessage("O lote é obrigatório.")
             .Matches("^[a-zA-Z0-9]+$").WithMessage("Apenas caracteres alfanuméricos são permitidos.");

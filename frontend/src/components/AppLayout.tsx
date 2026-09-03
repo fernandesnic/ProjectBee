@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { to: '/app', label: 'Dashboard', end: true },
   { to: '/app/products', label: 'Produtos', end: false },
   { to: '/app/storages', label: 'Armazéns', end: false },
+  { to: '/app/stock', label: 'Estoque', end: false },
 ]
 
 const PLANNED_ITEMS = ['Faturamento', 'Financeiro']
