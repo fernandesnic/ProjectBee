@@ -79,6 +79,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 var app = builder.Build();
 
 await app.SeedIdentityAsync();
+await app.SeedBusinessDataAsync();
 
 app.UseExceptionHandler();
 app.UseCors("FrontendDev");
