@@ -109,14 +109,10 @@ public record RegisterDTO(string Nome, string Email, string Password);
 
 public record CreateProductDTO(string Name, string SKU, string Desc, decimal Price) : IProductDTO;
 public record UpdateProductDTO(string Name, string Desc, decimal Price, bool? IsActive) : IProductDTO;
-
 public record ProductResponseDTO(Guid Id, string Name, string SKU, string Desc, decimal Price, bool IsActive);
-
-
 public record CreateStorageDTO(string IdNumber, string Name, string AddressNumber, string AddressStreet, string AddressCity) : IStorageDTO;
-public record UpdateStorageDTO(string IdNumber, string Name, string AddressNumber, string AddressStreet, string AddressCity, bool IsActive) : IStorageDTO;
-public record StorageResponseDTO(Guid Id, string Name, string IdNumber, string AddressNumber, string AddressStreet, string AddressCity);
-
+public record UpdateStorageDTO(string Name, string AddressNumber, string AddressStreet, string AddressCity, bool? IsActive) : IStorageDTO;
+public record StorageResponseDTO(Guid Id, string Name, string IdNumber, string AddressNumber, string AddressStreet, string AddressCity, bool IsActive);
 public record CreateStockDTO(Guid ProductId, Guid StorageId, int Balance, string Batch) : IStockDTO;
 public record UpdateStockDTO(int Balance);
 public record StockResponseDTO(Guid ProductId, string ProductName, Guid StorageId, string StorageName, string StorageAddress, int Balance, string Batch);

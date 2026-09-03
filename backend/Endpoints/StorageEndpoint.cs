@@ -35,7 +35,7 @@ public static class StorageEndpointsExtensions
             db.Storages.Add(Storage);
             await db.SaveChangesAsync();
 
-            var responseDTO = new StorageResponseDTO(Storage.Id, Storage.Name, Storage.IdNumber, Storage.AddressNumber, Storage.AddressStreet, Storage.AddressCity);
+            var responseDTO = new StorageResponseDTO(Storage.Id, Storage.Name, Storage.IdNumber, Storage.AddressNumber, Storage.AddressStreet, Storage.AddressCity, Storage.IsActive);
 
             return Results.Created($"/api/storages/{Storage.Id}", responseDTO);
         })
@@ -51,7 +51,8 @@ public static class StorageEndpointsExtensions
                     s.IdNumber,
                     s.AddressNumber,
                     s.AddressStreet,
-                    s.AddressCity
+                    s.AddressCity,
+                    s.IsActive
                     ))
                 .ToListAsync();
 
@@ -69,7 +70,8 @@ public static class StorageEndpointsExtensions
                     s.IdNumber,
                     s.AddressNumber,
                     s.AddressStreet,
-                    s.AddressCity
+                    s.AddressCity,
+                    s.IsActive
                     ))
                 .FirstOrDefaultAsync();
 
@@ -111,12 +113,11 @@ public static class StorageEndpointsExtensions
                 return Results.NotFound(new { mensagem = $"Armazem não encontrado" });
             }
 
-            Storage.IdNumber = dto.IdNumber;
             Storage.Name = dto.Name;
             Storage.AddressCity = dto.AddressCity;
             Storage.AddressStreet = dto.AddressStreet;
             Storage.AddressNumber = dto.AddressNumber;
-            Storage.IsActive = dto.IsActive;
+            Storage.IsActive = dto.IsActive!.Value;
             Storage.UpdatedAt = DateTime.UtcNow;
 
             await db.SaveChangesAsync();
