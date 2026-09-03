@@ -9,7 +9,8 @@ public static class ProductEndpointsExtensions
     {
 
     var productsApi = app.MapGroup("/api/products")
-            .RequireAuthorization(policy => policy.RequireRole(Roles.Operator, Roles.Manager));
+        .RequireAuthorization(policy => policy.RequireRole(Roles.Operator, Roles.Manager))
+        .WithTags("Produtos");
 
         productsApi.MapPost("/", async (CreateProductDTO dto, IValidator < CreateProductDTO > validator, AppDbContext db) =>
         {
@@ -40,7 +41,9 @@ public static class ProductEndpointsExtensions
 
             return Results.Created($"/api/products/{product.Id}", responseDTO);
         })
-        .RequireAuthorization(policy => policy.RequireRole(Roles.Manager));
+        .RequireAuthorization(policy => policy.RequireRole(Roles.Manager))
+        .WithSummary("Cadastra um produto")
+        .WithDescription("O SKU deve seguir o padrão A-Z, dígitos e hífen, de 3 a 15 caracteres, e é validado contra o banco antes de gravar. Requer perfil Manager.");
 
 
         productsApi.MapGet("/", async (AppDbContext db) =>
@@ -59,7 +62,9 @@ public static class ProductEndpointsExtensions
 
             return Results.Ok(responder);
 
-        });
+        })
+        .WithSummary("Lista todos os produtos")
+        .WithDescription("Retorna produtos ativos e inativos. Disponível para Operator e Manager.");
 
         productsApi.MapGet("/{id}", async (AppDbContext db, Guid id) =>
         {
@@ -83,7 +88,8 @@ public static class ProductEndpointsExtensions
 
             return Results.Ok(responder);
 
-        });
+        })
+        .WithSummary("Busca um produto por ID");
 
         productsApi.MapDelete("/{id}", async (AppDbContext db, Guid id) =>
         {
@@ -100,7 +106,9 @@ public static class ProductEndpointsExtensions
             return Results.NoContent();
 
         })
-        .RequireAuthorization(policy => policy.RequireRole(Roles.Manager));
+        .RequireAuthorization(policy => policy.RequireRole(Roles.Manager))
+        .WithSummary("Remove um produto")
+        .WithDescription("A exclusão é em cascata: os saldos de estoque vinculados a este produto também são removidos.");
 
         productsApi.MapPut("/{id}", async (UpdateProductDTO dto, IValidator < UpdateProductDTO > validator, AppDbContext db, Guid id) =>
         {
@@ -128,7 +136,9 @@ public static class ProductEndpointsExtensions
             return Results.Ok(new {mensagem = $"Produto atualizado com sucesso"});
 
         })
-        .RequireAuthorization(policy => policy.RequireRole(Roles.Manager));
+        .RequireAuthorization(policy => policy.RequireRole(Roles.Manager))
+        .WithSummary("Atualiza um produto")
+        .WithDescription("O SKU não pode ser alterado — ele identifica o produto, como um código de item. Para trocar de SKU, cadastre um novo produto. O campo IsActive é obrigatório: omiti-lo retorna 400, para evitar desativação acidental.");
 
     }
 }

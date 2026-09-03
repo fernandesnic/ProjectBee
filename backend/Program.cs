@@ -28,6 +28,24 @@ builder.Services.AddCors(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
+        options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "ProjectBee API",
+        Version = "v1",
+        Description =
+            "API de controle de estoque multi-armazém com rastreabilidade por lote.\n\n" +
+            "O saldo é modelado como entidade própria, com chave composta por " +
+            "**produto + armazém + lote** — o mesmo item pode existir em quantidades " +
+            "diferentes em locais diferentes.\n\n" +
+            "**Autenticação:** faça login em `/api/auth/login` com o usuário demo, " +
+            "copie o token e cole no botão *Authorize* acima.",
+        Contact = new OpenApiContact
+        {
+            Name = "Nicolas Fernandes",
+            Url = new Uri("https://github.com/fernandesnic/ProjectBee")
+        }
+    });
+    
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",

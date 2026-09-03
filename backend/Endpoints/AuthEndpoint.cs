@@ -5,7 +5,8 @@ public static class AuthEndpointsExtensions
 {
     public static void MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
-        var authApi = app.MapGroup("/api/auth");
+        var authApi = app.MapGroup("/api/auth")
+            .WithTags("Autenticação");
 
         authApi.MapPost("/login", async (LoginDTO dto, UserManager<AppUser> userManager, TokenService tokenService) =>
         {
@@ -33,7 +34,9 @@ public static class AuthEndpointsExtensions
             var token = tokenService.GenerateToken(user, roles);
 
             return Results.Ok(new { token });
-        });
+        })
+        .WithSummary("Autentica um usuário")
+        .WithDescription("Valida email e senha e retorna um token JWT. Endpoint público.");
 
         authApi.MapPost("/register", async (RegisterDTO dto, UserManager<AppUser> userManager, RoleManager<IdentityRole> roleManager) =>
         {
@@ -81,9 +84,9 @@ public static class AuthEndpointsExtensions
             await userManager.AddToRoleAsync(user, Roles.Operator);
 
             return Results.Ok(new { user.Id, user.Nome, user.Email });
-        });
-        // Endpoint intencionalmente público: permite que visitantes do portfólio
-        // testem o fluxo de auth sem precisar da conta demo seedada.
+        })
+        .WithSummary("Cadastra um novo usuário")
+        .WithDescription("Cria um usuário com perfil Operator por padrão. Endpoint intencionalmente público: permite que visitantes do portfólio testem o fluxo de auth sem precisar da conta demo seedada.");
         //.RequireAuthorization(policy => policy.RequireRole(Roles.Manager));
     }
 }
