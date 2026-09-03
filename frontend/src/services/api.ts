@@ -88,3 +88,46 @@ export async function updateProduct(id: string, payload: UpdateProductPayload) {
 export async function deleteProduct(id: string) {
   await api.delete(`/api/products/${id}`)
 }
+
+export interface Storage {
+  id: string
+  name: string
+  idNumber: string
+  addressNumber: string
+  addressStreet: string
+  addressCity: string
+  isActive: boolean
+}
+
+interface StorageFields {
+  name: string
+  addressNumber: string
+  addressStreet: string
+  addressCity: string
+}
+
+export interface CreateStoragePayload extends StorageFields {
+  idNumber: string
+}
+
+export interface UpdateStoragePayload extends StorageFields {
+  isActive: boolean
+}
+
+export async function getStorages() {
+  const { data } = await api.get<Storage[]>('/api/storages')
+  return data
+}
+
+export async function createStorage(payload: CreateStoragePayload) {
+  const { data } = await api.post<Storage>('/api/storages', payload)
+  return data
+}
+
+export async function updateStorage(id: string, payload: UpdateStoragePayload) {
+  await api.put(`/api/storages/${id}`, payload)
+}
+
+export async function deleteStorage(id: string) {
+  await api.delete(`/api/storages/${id}`)
+}
