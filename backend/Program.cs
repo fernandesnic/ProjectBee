@@ -46,6 +46,9 @@ builder.Services.AddIdentityCore<AppUser>().AddRoles<IdentityRole>().AddEntityFr
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>();
+
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
@@ -81,6 +84,7 @@ app.UseExceptionHandler();
 app.UseCors("FrontendDev");
 app.UseSwagger();
 app.UseSwaggerUI();
+app.MapHealthChecks("/health");
 
 app.UseAuthentication();
 
