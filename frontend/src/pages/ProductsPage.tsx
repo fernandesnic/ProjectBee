@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { useOutletContext } from 'react-router-dom'
-import { deleteProduct, getProducts, type Product } from '../services/api'
+import { deleteProduct, getProducts, getStock, type Product, type StockBalance } from '../services/api'
 import { ProductTable } from '../components/ProductTable'
 import { ProductForm } from '../components/ProductForm'
 import { ConfirmDialog } from '../components/ConfirmDialog'
@@ -9,10 +9,6 @@ import { Toast } from '../components/Toast'
 import type { AppLayoutContext } from '../components/AppLayout'
 
 type FormMode = { type: 'closed' } | { type: 'create' } | { type: 'edit'; product: Product }
-
-function currency(value: number) {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
 
 function ProductsPage() {
   const { roles } = useOutletContext<AppLayoutContext>()
@@ -25,13 +21,17 @@ function ProductsPage() {
   const [pendingDelete, setPendingDelete] = useState<Product | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [stock, setStock] = useState<StockBalance[]>([])
 
   useEffect(() => {
-    getProducts()
-      .then(setProducts)
-      .catch(() => setError('Não foi possível carregar os produtos.'))
-      .finally(() => setLoading(false))
-  }, [])
+  Promise.all([getProducts(), getStock()])
+    .then(([loadedProducts, loadedStock]) => {
+      setProducts(loadedProducts)
+      setStock(loadedStock)
+    })
+    .catch(() => setError('Não foi possível carregar os produtos.'))
+    .finally(() => setLoading(false))
+}, [])
 
   async function confirmDelete() {
     if (!pendingDelete) return
@@ -65,10 +65,10 @@ function ProductsPage() {
     setToast(isEditing ? 'Produto atualizado com sucesso.' : 'Produto cadastrado com sucesso.')
   }
 
-  const averagePrice =
-    products.length > 0
-      ? products.reduce((sum, product) => sum + product.price, 0) / products.length
-      : 0
+  const productIdsWithStock = new Set(stock.map((item) => item.productId))
+  const withoutStockCount = products.filter(
+    (product) => product.isActive && !productIdsWithStock.has(product.id),
+  ).length
 
   return (
     <div>
@@ -105,13 +105,13 @@ function ProductsPage() {
           </p>
         </div>
         <div className="rounded-2xl border border-line bg-cream-soft p-6">
-          <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-            Preço médio
-          </p>
-          <p className="mt-2 text-2xl font-bold tabular-nums text-ink">
-            {loading ? '—' : currency(averagePrice)}
-          </p>
-        </div>
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+              Produtos sem saldo
+            </p>
+            <p className="mt-2 text-2xl font-bold tabular-nums text-ink">
+              {loading ? '—' : withoutStockCount}
+            </p>
+          </div>
       </div>
 
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
