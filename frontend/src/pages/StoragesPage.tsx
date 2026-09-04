@@ -74,6 +74,13 @@ function StoragesPage() {
 
   const activeCount = storages.filter((storage) => storage.isActive).length
   const totalValue = stock.reduce((sum, item) => sum + item.balance * item.productPrice, 0)
+  const valueByStorage = new Map<string, number>()
+  for (const item of stock) {
+    valueByStorage.set(
+      item.storageId,
+      (valueByStorage.get(item.storageId) ?? 0) + item.balance * item.productPrice,
+    )
+  }
 
   return (
     <div>
@@ -129,6 +136,7 @@ function StoragesPage() {
         ) : (
           <StorageTable
             storages={storages}
+            valueByStorage={valueByStorage}
             onEdit={canManage ? (storage) => setFormMode({ type: 'edit', storage }) : undefined}
             onDelete={
               canManage

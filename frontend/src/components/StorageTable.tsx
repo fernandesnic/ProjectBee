@@ -2,11 +2,12 @@ import type { Storage } from '../services/api'
 
 interface StorageTableProps {
   storages: Storage[]
+  valueByStorage: Map<string, number>
   onEdit?: (storage: Storage) => void
   onDelete?: (id: string) => void
 }
 
-export function StorageTable({ storages, onEdit, onDelete }: StorageTableProps) {
+export function StorageTable({ storages, valueByStorage, onEdit, onDelete }: StorageTableProps) {
   if (storages.length === 0) {
     return <p className="text-sm text-ink-muted">Nenhum armazém cadastrado.</p>
   }
@@ -18,6 +19,7 @@ export function StorageTable({ storages, onEdit, onDelete }: StorageTableProps) 
           <th className="py-2 font-medium">Nome</th>
           <th className="py-2 font-medium">Código</th>
           <th className="py-2 font-medium">Endereço</th>
+          <th className="py-2 pr-6 text-right font-medium">Valor em estoque</th>
           <th className="py-2 font-medium">Status</th>
           {(onEdit || onDelete) && <th className="py-2" />}
         </tr>
@@ -29,6 +31,12 @@ export function StorageTable({ storages, onEdit, onDelete }: StorageTableProps) 
             <td className="py-2 font-mono text-ink-muted">{storage.idNumber}</td>
             <td className="py-2 text-ink-muted">
               {`${storage.addressStreet}, ${storage.addressNumber} — ${storage.addressCity}`}
+            </td>
+            <td className="py-2 pr-6 text-right tabular-nums text-ink">
+              {(valueByStorage.get(storage.id) ?? 0).toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL',
+              })}
             </td>
             <td className="py-2">
               <span

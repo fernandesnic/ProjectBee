@@ -70,9 +70,16 @@ function ProductsPage() {
     (product) => product.isActive && !productIdsWithStock.has(product.id),
   ).length
   const valueByProduct = new Map<string, number>()
+  const balanceByProduct = new Map<string, number>()
   for (const item of stock) {
-    const current = valueByProduct.get(item.productId) ?? 0
-    valueByProduct.set(item.productId, current + item.balance * item.productPrice)
+    valueByProduct.set(
+      item.productId,
+      (valueByProduct.get(item.productId) ?? 0) + item.balance * item.productPrice,
+    )
+    balanceByProduct.set(
+      item.productId,
+      (balanceByProduct.get(item.productId) ?? 0) + item.balance,
+    )
   }
 
   return (
@@ -128,6 +135,7 @@ function ProductsPage() {
           <ProductTable
             products={products}
             valueByProduct={valueByProduct}
+            balanceByProduct={balanceByProduct}
             onEdit={canManage ? (product) => setFormMode({ type: 'edit', product }) : undefined}
             onDelete={canManage ? (id) => setPendingDelete(products.find((p) => p.id === id) ?? null) : undefined}
           />

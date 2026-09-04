@@ -3,11 +3,18 @@ import type { Product } from '../services/api'
 interface ProductTableProps {
   products: Product[]
   valueByProduct: Map<string, number>
+  balanceByProduct: Map<string, number>
   onEdit?: (product: Product) => void
   onDelete?: (id: string) => void
 }
 
-export function ProductTable({ products, valueByProduct, onEdit, onDelete }: ProductTableProps) {
+export function ProductTable({
+  products,
+  valueByProduct,
+  balanceByProduct,
+  onEdit,
+  onDelete,
+}: ProductTableProps) {
     if (products.length === 0) {
     return <p className="text-sm text-ink-muted">Nenhum produto cadastrado.</p>
   }
@@ -19,6 +26,7 @@ export function ProductTable({ products, valueByProduct, onEdit, onDelete }: Pro
           <th className="py-2 font-medium">Nome</th>
           <th className="py-2 font-medium">SKU</th>
           <th className="py-2 font-medium">Preço</th>
+          <th className="py-2 text-right font-medium">Saldo</th>
           <th className="py-2 pr-6 text-right font-medium">Valor em estoque</th>
           <th className="py-2 font-medium">Status</th>
           {(onEdit || onDelete) && <th className="py-2" />}
@@ -31,6 +39,9 @@ export function ProductTable({ products, valueByProduct, onEdit, onDelete }: Pro
             <td className="py-2 font-mono text-ink-muted">{product.sku}</td>
             <td className="py-2 tabular-nums text-ink">
               {product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </td>
+            <td className="py-2 text-right tabular-nums text-ink">
+              {(balanceByProduct.get(product.id) ?? 0).toLocaleString('pt-BR')}
             </td>
             <td className="py-2 pr-6 text-right tabular-nums text-ink">
               {(valueByProduct.get(product.id) ?? 0).toLocaleString('pt-BR', {
