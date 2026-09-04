@@ -4,6 +4,8 @@ import { useOutletContext } from 'react-router-dom'
 import { deleteProduct, getProducts, type Product } from '../services/api'
 import { ProductTable } from '../components/ProductTable'
 import { ProductForm } from '../components/ProductForm'
+import { ConfirmDialog } from '../components/ConfirmDialog'
+import { Toast } from '../components/Toast'
 import type { AppLayoutContext } from '../components/AppLayout'
 
 type FormMode = { type: 'closed' } | { type: 'create' } | { type: 'edit'; product: Product }
@@ -20,6 +22,9 @@ function ProductsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [formMode, setFormMode] = useState<FormMode>({ type: 'closed' })
+  const [pendingDelete, setPendingDelete] = useState<Product | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
 
   useEffect(() => {
     getProducts()
@@ -28,21 +33,28 @@ function ProductsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  async function handleDelete(id: string) {
+  async function confirmDelete() {
+    if (!pendingDelete) return
     setError(null)
+    setDeleting(true)
     try {
-      await deleteProduct(id)
-      setProducts((current) => current.filter((product) => product.id !== id))
+      await deleteProduct(pendingDelete.id)
+      setProducts((current) => current.filter((product) => product.id !== pendingDelete.id))
+      setPendingDelete(null)
+      setToast('Produto removido com sucesso.')
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 403) {
         setError('Seu perfil não tem permissão para excluir produtos.')
       } else {
         setError('Não foi possível excluir o produto.')
       }
+    } finally {
+      setDeleting(false)
     }
   }
 
     function handleSaved(saved: Product) {
+    const isEditing = formMode.type === 'edit'
     setProducts((current) => {
       const exists = current.some((p) => p.id === saved.id)
       return exists
@@ -50,6 +62,7 @@ function ProductsPage() {
         : [...current, saved]
     })
     setFormMode({ type: 'closed' })
+    setToast(isEditing ? 'Produto atualizado com sucesso.' : 'Produto cadastrado com sucesso.')
   }
 
   const averagePrice =
@@ -110,10 +123,25 @@ function ProductsPage() {
           <ProductTable
             products={products}
             onEdit={canManage ? (product) => setFormMode({ type: 'edit', product }) : undefined}
-            onDelete={canManage ? handleDelete : undefined}
+            onDelete={canManage ? (id) => setPendingDelete(products.find((p) => p.id === id) ?? null) : undefined}
           />
         )}
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Remover produto"
+        description={
+          pendingDelete
+            ? `Tem certeza que deseja remover "${pendingDelete.name}"? Os saldos de estoque vinculados a ele também serão removidos.`
+            : undefined
+        }
+        busy={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
+
+      <Toast message={toast} onDismiss={() => setToast(null)} />
     </div>
   )
 }

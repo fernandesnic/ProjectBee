@@ -4,6 +4,8 @@ import { useOutletContext } from 'react-router-dom'
 import { deleteStock, getStock, type StockBalance } from '../services/api'
 import { StockTable } from '../components/StockTable'
 import { StockForm } from '../components/StockForm'
+import { ConfirmDialog } from '../components/ConfirmDialog'
+import { Toast } from '../components/Toast'
 import type { AppLayoutContext } from '../components/AppLayout'
 
 type FormMode = { type: 'closed' } | { type: 'create' } | { type: 'edit'; item: StockBalance }
@@ -16,6 +18,9 @@ function StockPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [formMode, setFormMode] = useState<FormMode>({ type: 'closed' })
+  const [pendingDelete, setPendingDelete] = useState<StockBalance | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
 
   const loadStock = useCallback(() => {
     setLoading(true)
@@ -29,32 +34,40 @@ function StockPage() {
     loadStock()
   }, [loadStock])
 
-  async function handleDelete(item: StockBalance) {
+  async function confirmDelete() {
+    if (!pendingDelete) return
     setError(null)
+    setDeleting(true)
     try {
-      await deleteStock(item.productId, item.storageId, item.batch)
+      await deleteStock(pendingDelete.productId, pendingDelete.storageId, pendingDelete.batch)
       setStock((current) =>
         current.filter(
           (s) =>
             !(
-              s.productId === item.productId &&
-              s.storageId === item.storageId &&
-              s.batch === item.batch
+              s.productId === pendingDelete.productId &&
+              s.storageId === pendingDelete.storageId &&
+              s.batch === pendingDelete.batch
             ),
         ),
       )
+      setPendingDelete(null)
+      setToast('Saldo removido com sucesso.')
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 403) {
         setError('Seu perfil não tem permissão para excluir saldos.')
       } else {
         setError('Não foi possível excluir o saldo.')
       }
+    } finally {
+      setDeleting(false)
     }
   }
 
   function handleSaved() {
+    const isEditing = formMode.type === 'edit'
     setFormMode({ type: 'closed' })
     loadStock()
+    setToast(isEditing ? 'Saldo atualizado com sucesso.' : 'Saldo registrado com sucesso.')
   }
 
   const totalUnits = stock.reduce((sum, item) => sum + item.balance, 0)
@@ -117,10 +130,25 @@ function StockPage() {
           <StockTable
             stock={stock}
             onEdit={canManage ? (item) => setFormMode({ type: 'edit', item }) : undefined}
-            onDelete={canManage ? handleDelete : undefined}
+            onDelete={canManage ? (item) => setPendingDelete(item) : undefined}
           />
         )}
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Remover saldo"
+        description={
+          pendingDelete
+            ? `Tem certeza que deseja remover o saldo do lote "${pendingDelete.batch}" de "${pendingDelete.productName}" em "${pendingDelete.storageName}"?`
+            : undefined
+        }
+        busy={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
+
+      <Toast message={toast} onDismiss={() => setToast(null)} />
     </div>
   )
 }

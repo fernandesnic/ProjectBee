@@ -4,6 +4,8 @@ import { useOutletContext } from 'react-router-dom'
 import { deleteStorage, getStorages, type Storage } from '../services/api'
 import { StorageTable } from '../components/StorageTable'
 import { StorageForm } from '../components/StorageForm'
+import { ConfirmDialog } from '../components/ConfirmDialog'
+import { Toast } from '../components/Toast'
 import type { AppLayoutContext } from '../components/AppLayout'
 
 type FormMode = { type: 'closed' } | { type: 'create' } | { type: 'edit'; storage: Storage }
@@ -16,6 +18,9 @@ function StoragesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [formMode, setFormMode] = useState<FormMode>({ type: 'closed' })
+  const [pendingDelete, setPendingDelete] = useState<Storage | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
 
   useEffect(() => {
     getStorages()
@@ -24,21 +29,28 @@ function StoragesPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  async function handleDelete(id: string) {
+  async function confirmDelete() {
+    if (!pendingDelete) return
     setError(null)
+    setDeleting(true)
     try {
-      await deleteStorage(id)
-      setStorages((current) => current.filter((storage) => storage.id !== id))
+      await deleteStorage(pendingDelete.id)
+      setStorages((current) => current.filter((storage) => storage.id !== pendingDelete.id))
+      setPendingDelete(null)
+      setToast('Armazém removido com sucesso.')
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 403) {
         setError('Seu perfil não tem permissão para excluir armazéns.')
       } else {
         setError('Não foi possível excluir o armazém.')
       }
+    } finally {
+      setDeleting(false)
     }
   }
 
   function handleSaved(saved: Storage) {
+    const isEditing = formMode.type === 'edit'
     setStorages((current) => {
       const exists = current.some((s) => s.id === saved.id)
       return exists
@@ -46,6 +58,7 @@ function StoragesPage() {
         : [...current, saved]
     })
     setFormMode({ type: 'closed' })
+    setToast(isEditing ? 'Armazém atualizado com sucesso.' : 'Armazém cadastrado com sucesso.')
   }
 
   const activeCount = storages.filter((storage) => storage.isActive).length
@@ -104,10 +117,25 @@ function StoragesPage() {
           <StorageTable
             storages={storages}
             onEdit={canManage ? (storage) => setFormMode({ type: 'edit', storage }) : undefined}
-            onDelete={canManage ? handleDelete : undefined}
+            onDelete={canManage ? (id) => setPendingDelete(storages.find((s) => s.id === id) ?? null) : undefined}
           />
         )}
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Remover armazém"
+        description={
+          pendingDelete
+            ? `Tem certeza que deseja remover "${pendingDelete.name}"? Os saldos de estoque vinculados a ele também serão removidos.`
+            : undefined
+        }
+        busy={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
+
+      <Toast message={toast} onDismiss={() => setToast(null)} />
     </div>
   )
 }
