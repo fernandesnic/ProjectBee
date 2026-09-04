@@ -2,11 +2,12 @@ import type { Product } from '../services/api'
 
 interface ProductTableProps {
   products: Product[]
+  valueByProduct: Map<string, number>
   onEdit?: (product: Product) => void
   onDelete?: (id: string) => void
 }
 
-export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) {
+export function ProductTable({ products, valueByProduct, onEdit, onDelete }: ProductTableProps) {
     if (products.length === 0) {
     return <p className="text-sm text-ink-muted">Nenhum produto cadastrado.</p>
   }
@@ -18,6 +19,7 @@ export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) 
           <th className="py-2 font-medium">Nome</th>
           <th className="py-2 font-medium">SKU</th>
           <th className="py-2 font-medium">Preço</th>
+          <th className="py-2 pr-6 text-right font-medium">Valor em estoque</th>
           <th className="py-2 font-medium">Status</th>
           {(onEdit || onDelete) && <th className="py-2" />}
         </tr>
@@ -29,6 +31,12 @@ export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) 
             <td className="py-2 font-mono text-ink-muted">{product.sku}</td>
             <td className="py-2 tabular-nums text-ink">
               {product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </td>
+            <td className="py-2 pr-6 text-right tabular-nums text-ink">
+              {(valueByProduct.get(product.id) ?? 0).toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL',
+              })}
             </td>
             <td className="py-2">
               <span

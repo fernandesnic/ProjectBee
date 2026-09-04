@@ -69,6 +69,11 @@ function ProductsPage() {
   const withoutStockCount = products.filter(
     (product) => product.isActive && !productIdsWithStock.has(product.id),
   ).length
+  const valueByProduct = new Map<string, number>()
+  for (const item of stock) {
+    const current = valueByProduct.get(item.productId) ?? 0
+    valueByProduct.set(item.productId, current + item.balance * item.productPrice)
+  }
 
   return (
     <div>
@@ -122,6 +127,7 @@ function ProductsPage() {
         ) : (
           <ProductTable
             products={products}
+            valueByProduct={valueByProduct}
             onEdit={canManage ? (product) => setFormMode({ type: 'edit', product }) : undefined}
             onDelete={canManage ? (id) => setPendingDelete(products.find((p) => p.id === id) ?? null) : undefined}
           />
