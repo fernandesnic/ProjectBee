@@ -1,4 +1,5 @@
-import { Link, NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { clearToken, decodeToken, getToken } from '../services/token'
 
 export interface AppLayoutContext {
@@ -6,24 +7,77 @@ export interface AppLayoutContext {
   roles: string[]
 }
 
-const NAV_ITEMS = [
-  { to: '/app', label: 'Dashboard', end: true },
-  { to: '/app/products', label: 'Produtos', end: false },
-  { to: '/app/storages', label: 'Armazéns', end: false },
-  { to: '/app/stock', label: 'Estoque', end: false },
+interface NavChild {
+  to?: string
+  label: string
+}
+
+interface NavGroup {
+  label: string
+  children: NavChild[]
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: 'Cadastros',
+    children: [
+      { to: '/app/products', label: 'Produtos' },
+      { to: '/app/storages', label: 'Armazéns' },
+      { label: 'Clientes' },
+    ],
+  },
+  {
+    label: 'Estoque',
+    children: [{ to: '/app/stock', label: 'Saldos' }],
+  },
+  {
+    label: 'Faturamento',
+    children: [{ label: 'Notas' }, { label: 'Emissão' }],
+  },
+  {
+    label: 'Financeiro',
+    children: [
+      { label: 'Contas a receber' },
+      { label: 'Contas a pagar' },
+      { label: 'Fluxo de caixa' },
+    ],
+  },
 ]
 
-const PLANNED_ITEMS = ['Faturamento', 'Financeiro']
+const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
+  `rounded-lg px-3 py-2 text-sm font-medium transition ${
+    isActive ? 'bg-honey/15 text-honey-dark' : 'text-ink-muted hover:bg-cream hover:text-ink'
+  }`
 
 function AppLayout() {
   const navigate = useNavigate()
+  const location = useLocation()
   const token = getToken()
+
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
+    const activeGroup = NAV_GROUPS.find((group) =>
+      group.children.some((child) => child.to && location.pathname.startsWith(child.to)),
+    )
+    return new Set(activeGroup ? [activeGroup.label] : [])
+  })
 
   if (!token) {
     return <Navigate to="/login" replace />
   }
 
   const { email, roles } = decodeToken(token)
+
+  function toggleGroup(label: string) {
+    setOpenGroups((current) => {
+      const next = new Set(current)
+      if (next.has(label)) {
+        next.delete(label)
+      } else {
+        next.add(label)
+      }
+      return next
+    })
+  }
 
   function handleLogout() {
     clearToken()
@@ -38,34 +92,51 @@ function AppLayout() {
         </Link>
 
         <nav className="mt-8 flex flex-col gap-1">
-          {NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.label}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `rounded-lg px-3 py-2 text-sm font-medium transition ${
-                  isActive
-                    ? 'bg-honey/15 text-honey-dark'
-                    : 'text-ink-muted hover:bg-cream hover:text-ink'
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          <NavLink to="/app" end className={navLinkClassName}>
+            Dashboard
+          </NavLink>
 
-          {PLANNED_ITEMS.map((label) => (
-            <span
-              key={label}
-              className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-ink-muted/50"
-            >
-              {label}
-              <span className="rounded-full bg-line/60 px-2 py-0.5 text-[10px] font-medium">
-                planejado
-              </span>
-            </span>
-          ))}
+          {NAV_GROUPS.map((group) => {
+            const isOpen = openGroups.has(group.label)
+            return (
+              <div key={group.label} className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.label)}
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ink-muted/70 transition hover:text-ink"
+                >
+                  {group.label}
+                  <span
+                    className={`transition-transform ${isOpen ? 'rotate-90' : ''}`}
+                    aria-hidden="true"
+                  >
+                    ›
+                  </span>
+                </button>
+                {isOpen && (
+                  <div className="mt-1 flex flex-col gap-1">
+                    {group.children.map((item) =>
+                      item.to ? (
+                        <NavLink key={item.label} to={item.to} className={navLinkClassName}>
+                          {item.label}
+                        </NavLink>
+                      ) : (
+                        <span
+                          key={item.label}
+                          className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-ink-muted/50"
+                        >
+                          {item.label}
+                          <span className="rounded-full bg-line/60 px-2 py-0.5 text-[10px] font-medium">
+                            planejado
+                          </span>
+                        </span>
+                      ),
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </nav>
       </aside>
 
