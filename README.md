@@ -118,12 +118,16 @@ Um usuário demo com perfil Manager é criado no startup (`IdentitySeed`), com a
 **Armazéns**
 - Código identificador e número do endereço são strings, não inteiros — endereços reais de galpão não cabem em `int` (`"S/N"`, `"1250-A"`)
 - Rua, cidade e número obrigatórios
+- `IdNumber` é imutável: não faz parte do contrato de atualização, mesma decisão aplicada ao SKU
+- `IsActive` é obrigatório na atualização (`bool?` + `NotNull`), pela mesma razão de Produtos
 
 **Estoque**
 - Saldo maior que zero
 - `ProductId` e `StorageId` verificados contra o banco antes da inserção
 - Chave composta com lote permite múltiplos lotes do mesmo produto no mesmo armazém
 - Tentativa de registrar produto+armazém+lote já existente retorna `409 Conflict`
+- Produto ou armazém inativo não aceita **nova** entrada de saldo. O saldo já existente continua visível e editável: desativar impede novas movimentações, mas não apaga o que está fisicamente no galpão
+- O lote aceita apenas caracteres alfanuméricos (`^[a-zA-Z0-9]+$`)
 
 ---
 
@@ -147,7 +151,30 @@ Um usuário demo com perfil Manager é criado no startup (`IdentitySeed`), com a
 
 **Escopo consciente: cadastro aberto.** `POST /api/auth/register` é público, contrariando o que seria correto em produção. É uma escolha de portfólio: sem isso, avaliar o controle de acesso do projeto dependeria de credenciais compartilhadas. A linha que aplicaria a restrição (`RequireAuthorization` com perfil `Manager`) está no código, comentada, para deixar explícito que a omissão é deliberada e não esquecimento.
 
+**Valor calculado no cliente, por enquanto.** O `StockResponseDTO` devolve o preço do produto junto do saldo, e o frontend multiplica. A alternativa — um endpoint de agregação com `SUM(Price * Balance)` no SQL Server — é mais correta conforme a base cresce, mas devolveria só o total: não daria para exibir valor por linha nem quebrar por armazém sem criar vários endpoints. A troca fica registrada no roadmap para quando o volume justificar.
+
+**Escopo consciente: sem livro-razão.** O saldo é editado diretamente, não derivado de movimentações. Um controle de estoque completo registraria entrada, saída, transferência e ajuste, com o saldo sendo consequência do histórico. Isso é o próximo passo estrutural do projeto, e está explícito aqui porque muda a natureza do módulo: hoje ele controla saldo, não movimentação.
+
 **Escopo consciente: single-tenant.** O projeto assume um único cliente por instância. Um cenário multi-tenant real exigiria uma coluna `TenantId` nas entidades principais e filtro por tenant em todo o `DbContext` — mudança estrutural de modelagem, não configuração pontual. Ficou fora do escopo para manter o foco na modelagem de estoque em si.
+
+---
+
+## Telas
+
+O frontend cobre os três módulos, com a UI de escrita condicionada ao perfil do usuário — um `Operator` logado não vê os botões de criação e exclusão de dados mestres.
+
+| Rota | Tela | O que mostra |
+|---|---|---|
+| `/` | Landing | Apresentação do projeto e acesso ao sistema |
+| `/login` | Login | Autenticação e obtenção do JWT |
+| `/app` | Dashboard | Prévia dos módulos planejados (dados ilustrativos) |
+| `/app/products` | Produtos | CRUD, valor em estoque por produto, produtos sem saldo |
+| `/app/storages` | Armazéns | CRUD, armazéns ativos, valor armazenado |
+| `/app/stock` | Estoque | CRUD de saldos, unidades e valor total, ordenado por valor |
+
+As listagens exibem **valor** (saldo × preço), não só quantidade. Quantidade responde "quanto tem"; valor responde "quanto está parado ali" — que é a pergunta que decide compra, transferência e baixa.
+
+Exclusões pedem confirmação explícita, com aviso de cascata: remover um produto ou armazém remove junto os saldos de estoque vinculados.
 
 ---
 
@@ -156,7 +183,7 @@ Um usuário demo com perfil Manager é criado no startup (`IdentitySeed`), com a
 ```
 ProjectBee/
 ├── backend/                # API .NET
-│   ├── Data/                   # AppDbContext e seed do Identity
+│   ├── Data/                   # AppDbContext, seed do Identity e seed de dados de negócio
 │   ├── Endpoints/              # Mapeamento HTTP por módulo
 │   ├── Filters/                # OperationFilter do Swagger
 │   ├── Interfaces/             # Contratos compartilhados entre DTOs
@@ -167,9 +194,11 @@ ProjectBee/
 │   └── Validators/             # Regras de validação (FluentValidation)
 └── frontend/               # Cliente React + TypeScript
     └── src/
-        ├── components/         # AppLayout, Navbar, ProductTable, ProductForm
-        ├── pages/              # Landing, Login, Dashboard, Products
-        └── services/           # api.ts (Axios + interceptors), token.ts (JWT)
+        ├── components/         # AppLayout, Navbar, tabelas e formulários de cada
+        │                       #   módulo, ConfirmDialog, Toast
+        ├── pages/              # Landing, Login, Dashboard, Products, Storages, Stock
+        └── services/           # api.ts (Axios + interceptors), token.ts (JWT),
+                                #   navigation.ts (redirect 401 via React Router)
 ```
 
 ---
@@ -203,7 +232,9 @@ dotnet ef database update
 dotnet run
 ```
 
-A API sobe em `http://localhost:5054`. O Swagger fica em **http://localhost:5054/swagger**.
+A API sobe em `http://localhost:5054`. O Swagger fica em **http://localhost:5054/swagger** e o health check em **http://localhost:5054/health** (verifica também a conexão com o banco, respondendo `503` se o SQL Server estiver inacessível).
+
+No primeiro boot com a base vazia, produtos, armazéns e saldos de demonstração são semeados automaticamente — as três telas já sobem com dado real para navegar.
 
 > As origens de CORS são lidas de `Cors:AllowedOrigins` no `appsettings.json` — já configurado para `http://localhost:5173` em desenvolvimento.
 
@@ -223,17 +254,23 @@ O frontend sobe em `http://localhost:5173` e aponta para `http://localhost:5054`
 
 ## Roadmap
 
-- [ ] Endpoint de health check
-- [ ] Seed de dados de demonstração (produtos e armazéns)
-- [ ] KPI de valor total do estoque (preço × saldo, agregado no banco)
-- [ ] Telas de Armazéns e Estoque no frontend
+**Próximo**
+- [ ] Deploy: Azure App Service + Azure SQL, frontend em Vercel/Netlify, demo pública
+- [ ] `GET /api/stock/summary` — agregação de valor no banco (`SUM(Price * Balance)`) em vez de somar no cliente
+- [ ] Paginação e busca nas listagens
+
+**Depois**
 - [ ] Livro-razão de movimentações (entrada, saída, transferência, ajuste) com saldo derivado
 - [ ] Controle de concorrência otimista para impedir saldo negativo em requisições simultâneas
-- [ ] Soft delete e paginação nas listagens
+- [ ] Soft delete nas listagens
 - [ ] Rate limiting e log de auditoria
 - [ ] Testes unitários e de integração
-- [ ] Docker Compose e deploy com demo pública
+- [ ] Docker Compose e CI no GitHub Actions
 - [ ] Segundo módulo do mini-ERP: faturamento
+
+### Limitação conhecida
+
+O botão *Authorize* do Swagger UI não anexa o header nas requisições. A causa é um bug do `Microsoft.OpenApi` 2.x ([issue #2801](https://github.com/microsoft/OpenAPI.NET/issues/2801)): ao construir o documento em memória, o `OpenApiSecurityRequirement` serializa como objeto vazio (`"security": [{}]`), e a UI conclui que o endpoint é público. A documentação em si funciona normalmente; para testar endpoints protegidos, use o [`ProjectBee.http`](./backend/ProjectBee.http).
 
 ---
 
