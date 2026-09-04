@@ -71,8 +71,11 @@ function StockPage() {
   }
 
   const totalUnits = stock.reduce((sum, item) => sum + item.balance, 0)
-  const batchCount = stock.length
+  const totalValue = stock.reduce((sum, item) => sum + item.balance * item.productPrice, 0)
 
+  const sortedStock = [...stock].sort(
+    (a, b) => b.balance * b.productPrice - a.balance * a.productPrice,
+  )
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -113,10 +116,12 @@ function StockPage() {
         </div>
         <div className="rounded-2xl border border-line bg-cream-soft p-6">
           <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-            Lotes rastreados
+            Valor total em estoque
           </p>
           <p className="mt-2 text-2xl font-bold tabular-nums text-ink">
-            {loading ? '—' : batchCount}
+            {loading
+              ? '—'
+              : totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
         </div>
       </div>
@@ -128,7 +133,7 @@ function StockPage() {
           <p className="text-sm text-ink-muted">Carregando saldos...</p>
         ) : (
           <StockTable
-            stock={stock}
+            stock={sortedStock}
             onEdit={canManage ? (item) => setFormMode({ type: 'edit', item }) : undefined}
             onDelete={canManage ? (item) => setPendingDelete(item) : undefined}
           />

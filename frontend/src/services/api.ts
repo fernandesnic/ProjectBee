@@ -135,6 +135,7 @@ export async function deleteStorage(id: string) {
 export interface StockBalance {
   productId: string
   productName: string
+  productPrice: number
   storageId: string
   storageName: string
   storageAddress: string

@@ -133,4 +133,4 @@ public record UpdateStorageDTO(string Name, string AddressNumber, string Address
 public record StorageResponseDTO(Guid Id, string Name, string IdNumber, string AddressNumber, string AddressStreet, string AddressCity, bool IsActive);
 public record CreateStockDTO(Guid ProductId, Guid StorageId, int Balance, string Batch) : IStockDTO;
 public record UpdateStockDTO(int Balance);
-public record StockResponseDTO(Guid ProductId, string ProductName, Guid StorageId, string StorageName, string StorageAddress, int Balance, string Batch);
+public record StockResponseDTO(Guid ProductId, string ProductName, decimal ProductPrice, Guid StorageId, string StorageName, string StorageAddress, int Balance, string Batch);

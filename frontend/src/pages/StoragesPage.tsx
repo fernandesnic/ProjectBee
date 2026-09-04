@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { useOutletContext } from 'react-router-dom'
-import { deleteStorage, getStorages, type Storage } from '../services/api'
+import {
+  deleteStorage,
+  getStock,
+  getStorages,
+  type StockBalance,
+  type Storage,
+} from '../services/api'
 import { StorageTable } from '../components/StorageTable'
 import { StorageForm } from '../components/StorageForm'
 import { ConfirmDialog } from '../components/ConfirmDialog'
@@ -15,6 +21,7 @@ function StoragesPage() {
   const canManage = roles.includes('Manager')
 
   const [storages, setStorages] = useState<Storage[]>([])
+  const [stock, setStock] = useState<StockBalance[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [formMode, setFormMode] = useState<FormMode>({ type: 'closed' })
@@ -23,8 +30,11 @@ function StoragesPage() {
   const [toast, setToast] = useState<string | null>(null)
 
   useEffect(() => {
-    getStorages()
-      .then(setStorages)
+    Promise.all([getStorages(), getStock()])
+      .then(([loadedStorages, loadedStock]) => {
+        setStorages(loadedStorages)
+        setStock(loadedStock)
+      })
       .catch(() => setError('Não foi possível carregar os armazéns.'))
       .finally(() => setLoading(false))
   }, [])
@@ -36,6 +46,7 @@ function StoragesPage() {
     try {
       await deleteStorage(pendingDelete.id)
       setStorages((current) => current.filter((storage) => storage.id !== pendingDelete.id))
+      setStock((current) => current.filter((item) => item.storageId !== pendingDelete.id))
       setPendingDelete(null)
       setToast('Armazém removido com sucesso.')
     } catch (err) {
@@ -62,7 +73,7 @@ function StoragesPage() {
   }
 
   const activeCount = storages.filter((storage) => storage.isActive).length
-  const cityCount = new Set(storages.map((storage) => storage.addressCity)).size
+  const totalValue = stock.reduce((sum, item) => sum + item.balance * item.productPrice, 0)
 
   return (
     <div>
@@ -100,10 +111,12 @@ function StoragesPage() {
         </div>
         <div className="rounded-2xl border border-line bg-cream-soft p-6">
           <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-            Cidades atendidas
+            Valor armazenado
           </p>
           <p className="mt-2 text-2xl font-bold tabular-nums text-ink">
-            {loading ? '—' : cityCount}
+            {loading
+              ? '—'
+              : totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
         </div>
       </div>
@@ -117,7 +130,11 @@ function StoragesPage() {
           <StorageTable
             storages={storages}
             onEdit={canManage ? (storage) => setFormMode({ type: 'edit', storage }) : undefined}
-            onDelete={canManage ? (id) => setPendingDelete(storages.find((s) => s.id === id) ?? null) : undefined}
+            onDelete={
+              canManage
+                ? (id) => setPendingDelete(storages.find((s) => s.id === id) ?? null)
+                : undefined
+            }
           />
         )}
       </div>

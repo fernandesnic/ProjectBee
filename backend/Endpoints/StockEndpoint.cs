@@ -51,6 +51,7 @@ public static class StockEndpointsExtensions
                 .Select(s => new StockResponseDTO(
                     s.ProductId,
                     s.Product.Name,
+                    s.Product.Price,
                     s.StorageId,
                     s.Storage.Name,
                     $"{s.Storage.AddressStreet}, {s.Storage.AddressNumber} - {s.Storage.AddressCity}",

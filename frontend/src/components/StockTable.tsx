@@ -19,6 +19,7 @@ export function StockTable({ stock, onEdit, onDelete }: StockTableProps) {
           <th className="py-2 font-medium">Armazém</th>
           <th className="py-2 font-medium">Lote</th>
           <th className="py-2 text-right font-medium">Saldo</th>
+          <th className="py-2 text-right font-medium">Valor</th>
           {(onEdit || onDelete) && <th className="py-2" />}
         </tr>
       </thead>
@@ -34,6 +35,12 @@ export function StockTable({ stock, onEdit, onDelete }: StockTableProps) {
             <td className="py-2 text-right tabular-nums text-ink">
               {item.balance.toLocaleString('pt-BR')}
             </td>
+            <td className="py-2 text-right tabular-nums font-medium text-ink">
+              {(item.balance * item.productPrice).toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL',
+              })}
+            </td>  
             {(onEdit || onDelete) && (
               <td className="py-2 text-right">
                 <div className="flex justify-end gap-4">
