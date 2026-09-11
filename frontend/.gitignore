@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Arquivos locais de sessão/ferramentas, não fazem parte do projeto
+.claude/
+PRODUCT.md
