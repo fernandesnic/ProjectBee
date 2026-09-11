@@ -482,3 +482,8 @@ $RECYCLE.BIN/
 *.swp
 
 ProjectBee-Checklist.md
+
+# Arquivos locais de sessão/ferramentas, não fazem parte do projeto
+.claude/
+.impeccable
+PRODUCT.md
