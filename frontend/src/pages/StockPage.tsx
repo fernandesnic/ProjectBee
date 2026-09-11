@@ -91,7 +91,7 @@ function StockPage() {
       </div>
 
       {canManage && formMode.type !== 'closed' && (
-        <div className="mt-6 rounded-2xl border border-line bg-cream-soft p-6">
+        <div className="mt-6 rounded-2xl border border-line bg-cream-soft p-4 sm:p-6">
           <StockForm
             key={
               formMode.type === 'edit'
@@ -106,7 +106,7 @@ function StockPage() {
       )}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl border border-line bg-cream-soft p-6">
+        <div className="rounded-2xl border border-line bg-cream-soft p-4 sm:p-6">
           <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
             Unidades em estoque
           </p>
@@ -114,7 +114,7 @@ function StockPage() {
             {loading ? '—' : totalUnits.toLocaleString('pt-BR')}
           </p>
         </div>
-        <div className="rounded-2xl border border-line bg-cream-soft p-6">
+        <div className="rounded-2xl border border-line bg-cream-soft p-4 sm:p-6">
           <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
             Valor total em estoque
           </p>
@@ -126,9 +126,13 @@ function StockPage() {
         </div>
       </div>
 
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="mt-4 text-sm text-danger" role="alert">
+          {error}
+        </p>
+      )}
 
-      <div className="mt-6 rounded-2xl border border-line bg-cream-soft p-6">
+      <div className="mt-6 rounded-2xl border border-line bg-cream-soft p-4 sm:p-6">
         {loading ? (
           <p className="text-sm text-ink-muted">Carregando saldos...</p>
         ) : (

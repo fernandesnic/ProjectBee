@@ -190,7 +190,7 @@ function Section({
   className = '',
   children,
 }: SectionProps) {
-  const eyebrowColor = tone === 'dark' ? 'text-honey-light' : 'text-honey-dark'
+  const eyebrowColor = tone === 'dark' ? 'text-honey-light' : 'text-honey-text'
   const titleColor = tone === 'dark' ? 'text-cream' : 'text-ink'
 
   const borderColor = tone === 'dark' ? 'border-cream/10' : 'border-line'
@@ -356,7 +356,7 @@ function LandingPage() {
             <div key={step.title}>
               <div className="relative flex h-10 w-10 items-center justify-center">
                 <Hex className="absolute inset-0 h-full w-full fill-honey/15" />
-                <span className="relative text-sm font-semibold text-honey-dark">
+                <span className="relative text-sm font-semibold text-honey-text">
                   {i + 1}
                 </span>
               </div>
@@ -384,7 +384,7 @@ function LandingPage() {
             const styles = mod.active
               ? {
                   card: 'border-honey-dark/40 bg-cream-soft p-8 shadow-md shadow-honey/10',
-                  badge: 'bg-honey/15 text-honey-dark',
+                  badge: 'bg-honey/15 text-honey-text',
                   title: 'text-lg font-semibold text-ink',
                 }
               : {
@@ -452,7 +452,7 @@ function LandingPage() {
             <ul className="mt-4 space-y-3">
               {DONE.map((item) => (
                 <li key={item} className="flex gap-3 text-sm leading-relaxed text-ink">
-                  <span className="mt-0.5 shrink-0 text-honey-dark">✓</span>
+                  <span className="mt-0.5 shrink-0 text-honey-text">✓</span>
                   {item}
                 </li>
               ))}
@@ -525,7 +525,7 @@ function LandingPage() {
               href={LINKEDIN_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-honey-dark transition hover:text-ink"
+              className="text-honey-text transition hover:text-ink"
             >
               LinkedIn
             </a>
@@ -533,7 +533,7 @@ function LandingPage() {
               href={GITHUB_PROFILE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-honey-dark transition hover:text-ink"
+              className="text-honey-text transition hover:text-ink"
             >
               GitHub (perfil)
             </a>

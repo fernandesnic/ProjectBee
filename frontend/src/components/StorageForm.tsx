@@ -71,7 +71,11 @@ export function StorageForm({ storage, onSaved, onCancel }: StorageFormProps) {
   function fieldErrors(field: string) {
     const messages = errors[field]
     if (!messages?.length) return null
-    return <p className="mt-1 text-xs text-red-600">{messages.join(' ')}</p>
+    return (
+      <p className="mt-1 text-xs text-danger" role="alert">
+        {messages.join(' ')}
+      </p>
+    )
   }
 
   const inputClass =

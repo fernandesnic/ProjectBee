@@ -15,6 +15,10 @@
   --color-honey: #f2a92e;
   --color-honey-dark: #c9820c;
   --color-honey-light: #ffdd8a;
+  --color-honey-text: #96600a;
+
+  --color-danger: #dc2626;
+  --color-danger-dark: #b91c1c;
 }
 
 :root {

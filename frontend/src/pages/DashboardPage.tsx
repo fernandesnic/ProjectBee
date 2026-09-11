@@ -134,7 +134,7 @@ function CategoryMenu({ active, onSelect }: CategoryMenuProps) {
                 }}
                 className={`flex w-full items-center px-4 py-2 text-left text-sm transition ${
                   category.key === active.key
-                    ? 'bg-honey/15 font-medium text-honey-dark'
+                    ? 'bg-honey/15 font-medium text-honey-text'
                     : 'text-ink hover:bg-cream'
                 }`}
               >
@@ -309,7 +309,11 @@ function DashboardPage() {
 
       {categoryKey === 'produtos' && (
         <div className="mt-6 space-y-6">
-          {productsError && <p className="text-sm text-red-600">{productsError}</p>}
+          {productsError && (
+            <p className="text-sm text-danger" role="alert">
+              {productsError}
+            </p>
+          )}
 
           <div className="rounded-2xl border border-line bg-cream-soft p-6">
             <p className="text-sm font-semibold text-ink">Valor em estoque por produto</p>

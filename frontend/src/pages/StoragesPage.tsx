@@ -97,7 +97,7 @@ function StoragesPage() {
       </div>
 
       {canManage && formMode.type !== 'closed' && (
-        <div className="mt-6 rounded-2xl border border-line bg-cream-soft p-6">
+        <div className="mt-6 rounded-2xl border border-line bg-cream-soft p-4 sm:p-6">
           <StorageForm
             key={formMode.type === 'edit' ? formMode.storage.id : 'create'}
             storage={formMode.type === 'edit' ? formMode.storage : undefined}
@@ -108,7 +108,7 @@ function StoragesPage() {
       )}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl border border-line bg-cream-soft p-6">
+        <div className="rounded-2xl border border-line bg-cream-soft p-4 sm:p-6">
           <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
             Armazéns ativos
           </p>
@@ -116,7 +116,7 @@ function StoragesPage() {
             {loading ? '—' : activeCount}
           </p>
         </div>
-        <div className="rounded-2xl border border-line bg-cream-soft p-6">
+        <div className="rounded-2xl border border-line bg-cream-soft p-4 sm:p-6">
           <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
             Valor armazenado
           </p>
@@ -128,9 +128,13 @@ function StoragesPage() {
         </div>
       </div>
 
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="mt-4 text-sm text-danger" role="alert">
+          {error}
+        </p>
+      )}
 
-      <div className="mt-6 rounded-2xl border border-line bg-cream-soft p-6">
+      <div className="mt-6 rounded-2xl border border-line bg-cream-soft p-4 sm:p-6">
         {loading ? (
           <p className="text-sm text-ink-muted">Carregando armazéns...</p>
         ) : (
