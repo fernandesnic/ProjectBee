@@ -487,3 +487,7 @@ ProjectBee-Checklist.md
 .claude/
 .impeccable
 PRODUCT.md
+# Arquivos internos da ferramenta Impeccable Stylish
+.github/agents/
+.github/hooks/
+.github/skills/
