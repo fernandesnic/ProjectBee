@@ -20,6 +20,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     base.OnModelCreating(modelBuilder);
 
     modelBuilder.Entity<StockBalance>().HasKey(x => new { x.ProductId, x.StorageId, x.Batch });
+    modelBuilder.Entity<StockBalance>().Property(x => x.RowVersion).IsRowVersion();
 
     modelBuilder.Entity<Product>().Property(x => x.Price).HasPrecision(14, 2);
     modelBuilder.Entity<Product>().Property(x => x.SKU).HasMaxLength(15);

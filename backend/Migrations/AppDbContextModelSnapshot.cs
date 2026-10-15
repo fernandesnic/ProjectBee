@@ -278,6 +278,12 @@ namespace ProjectBee.Migrations
                     b.Property<int>("Balance")
                         .HasColumnType("int");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.HasKey("ProductId", "StorageId", "Batch");
 
                     b.HasIndex("StorageId");

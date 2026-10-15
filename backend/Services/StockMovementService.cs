@@ -4,10 +4,13 @@ using ProjectBee.Models;
 
 namespace ProjectBee.Services;
 
-public record MovementResult(bool Success, int Balance, string? Error = null)
+public record MovementResult(bool Success, int Balance, string? Error = null, bool IsConflict = false)
 {
     public static MovementResult Ok(int balance) => new(true, balance);
     public static MovementResult Fail(string error) => new(false, 0, error);
+    public static MovementResult Conflict() => new(false, 0,
+        "O saldo foi alterado por outra operação ao mesmo tempo. Consulte o saldo atualizado e tente novamente.",
+        IsConflict: true);
 }
 
 public class StockMovementService
@@ -35,7 +38,8 @@ public class StockMovementService
         var balance = await GetOrCreateBalanceAsync(productId, storageId, batch);
         balance.Balance += quantity;
 
-        await _db.SaveChangesAsync();
+        if (!await TrySaveAsync())
+            return MovementResult.Conflict();
 
         return MovementResult.Ok(balance.Balance);
     }
@@ -63,7 +67,8 @@ public class StockMovementService
 
         balance.Balance -= quantity;
 
-        await _db.SaveChangesAsync();
+        if (!await TrySaveAsync())
+            return MovementResult.Conflict();
 
         return MovementResult.Ok(balance.Balance);
     }
@@ -110,7 +115,8 @@ public class StockMovementService
         source.Balance -= quantity;
         destination.Balance += quantity;
 
-        await _db.SaveChangesAsync();   
+        if (!await TrySaveAsync())
+            return MovementResult.Conflict();
 
         return MovementResult.Ok(source.Balance);
     }
@@ -137,9 +143,25 @@ public class StockMovementService
 
         balance.Balance = countedQuantity;
 
-        await _db.SaveChangesAsync();
+        if (!await TrySaveAsync())
+            return MovementResult.Conflict();
 
         return MovementResult.Ok(balance.Balance);
+    }
+
+    // O RowVersion do saldo vai no WHERE do UPDATE. Se outra requisição gravou depois da nossa
+    // leitura, nenhuma linha é afetada e nada é salvo: nem o saldo, nem o movimento.
+    private async Task<bool> TrySaveAsync()
+    {
+        try
+        {
+            await _db.SaveChangesAsync();
+            return true;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return false;
+        }
     }
 
     private async Task<StockBalance> GetOrCreateBalanceAsync(Guid productId, Guid storageId, string batch)

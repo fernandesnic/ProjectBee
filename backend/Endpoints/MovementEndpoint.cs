@@ -124,8 +124,13 @@ public static class MovementEndpointsExtensions
     private static IResult ToHttpResult(MovementResult result, string successMessage) =>
         result.Success
             ? Results.Ok(new { mensagem = successMessage, saldoAtual = result.Balance })
-            : Results.Problem(
-                title: "Movimento recusado",
-                detail: result.Error,
-                statusCode: StatusCodes.Status422UnprocessableEntity);
+            : result.IsConflict
+                ? Results.Problem(
+                    title: "Conflito de concorrência",
+                    detail: result.Error,
+                    statusCode: StatusCodes.Status409Conflict)
+                : Results.Problem(
+                    title: "Movimento recusado",
+                    detail: result.Error,
+                    statusCode: StatusCodes.Status422UnprocessableEntity);
 }

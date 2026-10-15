@@ -43,6 +43,7 @@ public class StockBalance
     public Storage Storage { get; set; } = null!;
     public int Balance { get; set; }
     public string Batch {  get; set; } = string.Empty;
+    public byte[] RowVersion { get; set; } = null!; // controle de concorrência otimista
 }
 
 public enum MovementType
