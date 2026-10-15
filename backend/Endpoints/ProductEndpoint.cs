@@ -100,6 +100,24 @@ public static class ProductEndpointsExtensions
         {
         return Results.NotFound(new {mensagem = $"Produto não encontrado"});
         }
+
+            // Excluir apagaria os saldos em cascata, e os movimentos amarram o histórico ao produto.
+            if (await db.StockBalances.AnyAsync(b => b.ProductId == id && b.Balance != 0))
+            {
+                return Results.Problem(
+                    title: "Exclusão recusada",
+                    detail: "O produto ainda tem saldo em estoque. Dê saída, transfira ou ajuste o estoque para zero antes de excluí-lo.",
+                    statusCode: StatusCodes.Status422UnprocessableEntity);
+            }
+
+            if (await db.StockMovements.AnyAsync(m => m.ProductId == id))
+            {
+                return Results.Problem(
+                    title: "Exclusão recusada",
+                    detail: "O produto tem histórico de movimentos e não pode ser excluído. Desative-o para que não receba novos movimentos.",
+                    statusCode: StatusCodes.Status422UnprocessableEntity);
+            }
+
             db.Products.Remove(product);
 
             await db.SaveChangesAsync();
@@ -109,7 +127,7 @@ public static class ProductEndpointsExtensions
         })
         .RequireAuthorization(policy => policy.RequireRole(Roles.Manager))
         .WithSummary("Remove um produto")
-        .WithDescription("A exclusão é em cascata: os saldos de estoque vinculados a este produto também são removidos.");
+        .WithDescription("Só é permitida para produtos sem saldo e sem histórico de movimentos; caso contrário retorna 422. Produtos com histórico devem ser desativados. Requer perfil Manager.");
 
         productsApi.MapPut("/{id}", async (UpdateProductDTO dto, IValidator < UpdateProductDTO > validator, AppDbContext db, Guid id) =>
         {

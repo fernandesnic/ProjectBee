@@ -45,6 +45,9 @@ function ProductsPage() {
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 403) {
         setError('Seu perfil não tem permissão para excluir produtos.')
+      } else if (axios.isAxiosError(err) && err.response?.status === 422) {
+        setPendingDelete(null)
+        setError(err.response.data?.detail ?? 'O produto não pode ser excluído.')
       } else {
         setError('Não foi possível excluir o produto.')
       }
