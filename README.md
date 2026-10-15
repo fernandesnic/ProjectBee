@@ -157,7 +157,7 @@ O `/api/stock` é **somente leitura**. Os antigos `POST`, `PUT` e `DELETE` grava
 | `GET` | `/api/products` | Lista produtos | Manager, Operator | `200` |
 | `GET` | `/api/products/{id}` | Busca por ID | Manager, Operator | `200` `404` |
 | `PUT` | `/api/products/{id}` | Atualiza produto | Manager | `200` `400` `404` |
-| `DELETE` | `/api/products/{id}` | Remove produto | Manager | `204` `404` |
+| `DELETE` | `/api/products/{id}` | Remove produto | Manager | `204` `404` `422` |
 
 ### Armazéns
 
@@ -169,7 +169,7 @@ O `/api/stock` é **somente leitura**. Os antigos `POST`, `PUT` e `DELETE` grava
 | `PUT` | `/api/storages/{id}` | Atualiza armazém | Manager | `200` `400` `404` `422` |
 | `DELETE` | `/api/storages/{id}` | Remove armazém | Manager | `204` `404` `422` |
 
-> O arquivo [`ProjectBee.http`](./backend/ProjectBee.http) contém requisições prontas para testar os endpoints, incluindo os casos de erro.
+> O arquivo [`ProjectBee.http`](./backend/ProjectBee.http) roda de ponta a ponta, incluindo os casos de erro: o login guarda o token e as criações guardam os IDs, então basta executar as requisições na ordem. Cada uma traz no título o status esperado.
 
 ---
 
@@ -201,6 +201,7 @@ O `/api/stock` é **somente leitura**. Os antigos `POST`, `PUT` e `DELETE` grava
 - SKU único: validado na aplicação **e** garantido por índice único no banco
 - SKU é imutável: não faz parte do contrato de atualização
 - `IsActive` é obrigatório na atualização (`bool?` no DTO + `NotNull` no validator): omitir o campo desativaria o produto silenciosamente, já que o default de `bool` é `false`
+- Excluir produto com saldo é recusado com `422`. Com saldo zerado mas com histórico, também — a mesma regra dos armazéns. Nesse caso, o caminho é desativar
 
 ---
 
@@ -247,10 +248,10 @@ cd ProjectBee/tests/ProjectBee.Tests
 dotnet test
 ```
 
-São 29 testes, em duas camadas:
+São 33 testes, em duas camadas:
 
 - **Serviço** (`StockMovementServiceTests`) — as regras do livro-razão chamando o `StockMovementService` direto: saldo insuficiente, transferência para o mesmo armazém, ajuste sem diferença, sinal de cada movimento, par de transferência com o mesmo `TransferId`, e a prova real depois de uma sequência mista de operações.
-- **API** (`MovementEndpointTests`, `StorageEndpointTests`) — a aplicação inteira via `WebApplicationFactory`, com autenticação de verdade: `400` com erros por campo, `422` com `detail`, `401` sem token, `403` do Operator no ajuste, bloqueios de desativação e exclusão de armazém, e o `/api/stock` recusando escrita.
+- **API** (`MovementEndpointTests`, `StorageEndpointTests`, `ProductEndpointTests`, `SeedTests`) — a aplicação inteira via `WebApplicationFactory`, com autenticação de verdade: `400` com erros por campo, `422` com `detail`, `401` sem token, `403` do Operator no ajuste, bloqueios de desativação e exclusão de armazém e produto, o `/api/stock` recusando escrita, e a prova real fechando com os dados de demonstração num banco recém-criado.
 
 A concorrência é testada de dois jeitos:
 
@@ -367,10 +368,10 @@ O frontend sobe em `http://localhost:5173` e aponta para `http://localhost:5054`
 - [x] Livro-razão de movimentações (entrada, saída, transferência, ajuste) com saldo derivado e prova real
 - [x] Controle de concorrência otimista para impedir saldo negativo em requisições simultâneas
 - [x] Testes de serviço e de integração, incluindo concorrência
+- [x] Seed de demonstração registrando os saldos por movimento, para a prova real fechar já no primeiro boot
+- [x] Bloquear exclusão de produto com saldo ou histórico, com a mesma regra dos armazéns
 
 **Próximo**
-- [ ] Seed de demonstração registrando os saldos por movimento, para a prova real fechar já no primeiro boot
-- [ ] Bloquear exclusão de produto com saldo ou histórico, com a mesma regra dos armazéns
 - [ ] Devolver `409` também quando duas entradas simultâneas criam o mesmo lote novo
 - [ ] Deploy: Azure App Service + Azure SQL, frontend em Vercel/Netlify, demo pública
 - [ ] `GET /api/stock/summary` — agregação de valor no banco (`SUM(Price * Balance)`) em vez de somar no cliente
