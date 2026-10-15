@@ -18,7 +18,7 @@ export function Toast({ message, onDismiss }: ToastProps) {
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl bg-hive px-4 py-3 text-sm font-medium text-cream shadow-lg"
+      className="fixed bottom-4 left-4 right-4 z-50 flex items-center gap-2 sm:bottom-6 sm:left-auto sm:right-6 sm:max-w-sm rounded-xl bg-hive px-4 py-3 text-sm font-medium text-cream shadow-lg"
     >
       <span className="text-honey" aria-hidden="true">
         ✓
