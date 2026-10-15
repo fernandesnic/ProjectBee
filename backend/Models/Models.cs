@@ -51,7 +51,8 @@ public enum MovementType
     Exit = 2,         // Saída
     TransferOut = 3,  // Transferência - sai da origem (RE4)
     TransferIn = 4,   // Transferência - entra no destino (DE4)
-    Adjustment = 5    // Ajuste de inventário
+    Adjustment = 5,     // Ajuste de inventário
+    OpeningBalance = 6  // Saldo inicial (implantação do livro-razão)
 }
 
 public class StockMovement
