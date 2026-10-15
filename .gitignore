@@ -491,3 +491,5 @@ PRODUCT.md
 .github/agents/
 .github/hooks/
 .github/skills/
+.agents
+.codex
