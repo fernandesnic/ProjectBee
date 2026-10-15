@@ -1,30 +1,38 @@
 import { useCallback, useEffect, useState } from 'react'
-import axios from 'axios'
 import { useOutletContext } from 'react-router-dom'
-import { deleteStock, getStock, type StockBalance } from '../services/api'
+import { getStock, type MovementResult, type StockBalance } from '../services/api'
 import { StockTable } from '../components/StockTable'
-import { StockForm } from '../components/StockForm'
-import { ConfirmDialog } from '../components/ConfirmDialog'
+import { MovementForm, type MovementKind } from '../components/MovementForm'
+import { MovementHistory } from '../components/MovementHistory'
+import { Modal } from '../components/Modal'
 import { Toast } from '../components/Toast'
 import type { AppLayoutContext } from '../components/AppLayout'
 
-type FormMode = { type: 'closed' } | { type: 'create' } | { type: 'edit'; item: StockBalance }
+type Dialog =
+  | { type: 'closed' }
+  | { type: 'movement'; kind: MovementKind; item?: StockBalance }
+  | { type: 'history'; item: StockBalance }
+
+const TITLE: Record<MovementKind, string> = {
+  entry: 'Entrada',
+  exit: 'Saída',
+  transfer: 'Transferência',
+  adjustment: 'Ajuste de inventário',
+}
 
 function StockPage() {
   const { roles } = useOutletContext<AppLayoutContext>()
-  const canManage = roles.includes('Manager')
+  const canAdjust = roles.includes('Manager')
 
   const [stock, setStock] = useState<StockBalance[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [formMode, setFormMode] = useState<FormMode>({ type: 'closed' })
-  const [pendingDelete, setPendingDelete] = useState<StockBalance | null>(null)
-  const [deleting, setDeleting] = useState(false)
+  const [dialog, setDialog] = useState<Dialog>({ type: 'closed' })
+  const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
   const loadStock = useCallback(() => {
-    setLoading(true)
-    getStock()
+    return getStock()
       .then(setStock)
       .catch(() => setError('Não foi possível carregar os saldos.'))
       .finally(() => setLoading(false))
@@ -34,40 +42,14 @@ function StockPage() {
     loadStock()
   }, [loadStock])
 
-  async function confirmDelete() {
-    if (!pendingDelete) return
-    setError(null)
-    setDeleting(true)
-    try {
-      await deleteStock(pendingDelete.productId, pendingDelete.storageId, pendingDelete.batch)
-      setStock((current) =>
-        current.filter(
-          (s) =>
-            !(
-              s.productId === pendingDelete.productId &&
-              s.storageId === pendingDelete.storageId &&
-              s.batch === pendingDelete.batch
-            ),
-        ),
-      )
-      setPendingDelete(null)
-      setToast('Saldo removido com sucesso.')
-    } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 403) {
-        setError('Seu perfil não tem permissão para excluir saldos.')
-      } else {
-        setError('Não foi possível excluir o saldo.')
-      }
-    } finally {
-      setDeleting(false)
-    }
-  }
+  const closeDialog = useCallback(() => setDialog({ type: 'closed' }), [])
+  const dismissToast = useCallback(() => setToast(null), [])
 
-  function handleSaved() {
-    const isEditing = formMode.type === 'edit'
-    setFormMode({ type: 'closed' })
+  function handleMovementDone(result: MovementResult) {
+    setDialog({ type: 'closed' })
+    setError(null)
+    setToast(`${result.mensagem} Saldo atual: ${result.saldoAtual.toLocaleString('pt-BR')}.`)
     loadStock()
-    setToast(isEditing ? 'Saldo atualizado com sucesso.' : 'Saldo registrado com sucesso.')
   }
 
   const totalUnits = stock.reduce((sum, item) => sum + item.balance, 0)
@@ -76,41 +58,27 @@ function StockPage() {
   const sortedStock = [...stock].sort(
     (a, b) => b.balance * b.productPrice - a.balance * a.productPrice,
   )
+
+  const dialogItem = dialog.type === 'closed' ? undefined : dialog.item
+
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-ink">Estoque</h1>
-        {canManage && formMode.type === 'closed' && (
-          <button
-            onClick={() => setFormMode({ type: 'create' })}
-            className="rounded-full bg-honey px-5 py-2 text-sm font-semibold text-hive transition hover:bg-honey-light"
-          >
-            Registrar saldo
-          </button>
-        )}
+        <button
+          onClick={() => setDialog({ type: 'movement', kind: 'entry' })}
+          className="h-11 rounded-full bg-honey px-5 text-sm font-semibold text-hive transition hover:bg-honey-light sm:h-auto sm:py-2"
+        >
+          Entrada em lote novo
+        </button>
       </div>
 
-      {canManage && formMode.type !== 'closed' && (
-        <div className="mt-6 rounded-2xl border border-line bg-cream-soft p-4 sm:p-6">
-          <StockForm
-            key={
-              formMode.type === 'edit'
-                ? `${formMode.item.productId}-${formMode.item.storageId}-${formMode.item.batch}`
-                : 'create'
-            }
-            item={formMode.type === 'edit' ? formMode.item : undefined}
-            onSaved={handleSaved}
-            onCancel={() => setFormMode({ type: 'closed' })}
-          />
-        </div>
-      )}
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4">
         <div className="rounded-2xl border border-line bg-cream-soft p-4 sm:p-6">
           <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
             Unidades em estoque
           </p>
-          <p className="mt-2 text-2xl font-bold tabular-nums text-ink">
+          <p className="mt-2 text-xl font-bold tabular-nums text-ink sm:text-2xl">
             {loading ? '—' : totalUnits.toLocaleString('pt-BR')}
           </p>
         </div>
@@ -118,7 +86,7 @@ function StockPage() {
           <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
             Valor total em estoque
           </p>
-          <p className="mt-2 text-2xl font-bold tabular-nums text-ink">
+          <p className="mt-2 break-words text-xl font-bold tabular-nums text-ink sm:text-2xl">
             {loading
               ? '—'
               : totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -132,32 +100,57 @@ function StockPage() {
         </p>
       )}
 
-      <div className="mt-6 rounded-2xl border border-line bg-cream-soft p-4 sm:p-6">
+      <div className="mt-6 rounded-2xl border border-line bg-cream-soft p-3 sm:p-6">
         {loading ? (
           <p className="text-sm text-ink-muted">Carregando saldos...</p>
         ) : (
           <StockTable
             stock={sortedStock}
-            onEdit={canManage ? (item) => setFormMode({ type: 'edit', item }) : undefined}
-            onDelete={canManage ? (item) => setPendingDelete(item) : undefined}
+            canAdjust={canAdjust}
+            onMovement={(kind, item) => setDialog({ type: 'movement', kind, item })}
+            onHistory={(item) => setDialog({ type: 'history', item })}
           />
         )}
       </div>
 
-      <ConfirmDialog
-        open={pendingDelete !== null}
-        title="Remover saldo"
-        description={
-          pendingDelete
-            ? `Tem certeza que deseja remover o saldo do lote "${pendingDelete.batch}" de "${pendingDelete.productName}" em "${pendingDelete.storageName}"?`
-            : undefined
+      <Modal
+        open={dialog.type !== 'closed'}
+        title={
+          dialog.type === 'movement'
+            ? dialog.item
+              ? TITLE[dialog.kind]
+              : 'Entrada em lote novo'
+            : 'Histórico do lote'
         }
-        busy={deleting}
-        onConfirm={confirmDelete}
-        onCancel={() => setPendingDelete(null)}
-      />
+        subtitle={
+          dialogItem && (
+            <>
+              <span className="font-medium text-ink">{dialogItem.productName}</span> em{' '}
+              {dialogItem.storageName}
+              <span className="mt-0.5 block text-xs">
+                Lote <span className="font-mono">{dialogItem.batch}</span> · saldo{' '}
+                <span className="tabular-nums">{dialogItem.balance.toLocaleString('pt-BR')}</span>
+              </span>
+            </>
+          )
+        }
+        busy={busy}
+        onClose={closeDialog}
+      >
+        {dialog.type === 'movement' && (
+          <MovementForm
+            key={`${dialog.kind}-${dialogItem ? `${dialogItem.productId}-${dialogItem.storageId}-${dialogItem.batch}` : 'new'}`}
+            kind={dialog.kind}
+            item={dialog.item}
+            onDone={handleMovementDone}
+            onCancel={closeDialog}
+            onBusyChange={setBusy}
+          />
+        )}
+        {dialog.type === 'history' && <MovementHistory item={dialog.item} />}
+      </Modal>
 
-      <Toast message={toast} onDismiss={() => setToast(null)} />
+      <Toast message={toast} onDismiss={dismissToast} />
     </div>
   )
 }

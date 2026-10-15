@@ -143,33 +143,9 @@ export interface StockBalance {
   batch: string
 }
 
-export interface CreateStockPayload {
-  productId: string
-  storageId: string
-  balance: number
-  batch: string
-}
-
 export async function getStock() {
   const { data } = await api.get<StockBalance[]>('/api/stock')
   return data
-}
-
-export async function createStock(payload: CreateStockPayload) {
-  await api.post('/api/stock', payload)
-}
-
-export async function updateStock(
-  productId: string,
-  storageId: string,
-  batch: string,
-  balance: number,
-) {
-  await api.put(`/api/stock/${productId}/${storageId}/${batch}`, { balance })
-}
-
-export async function deleteStock(productId: string, storageId: string, batch: string) {
-  await api.delete(`/api/stock/${productId}/${storageId}/${batch}`)
 }
 
 export type MovementType =

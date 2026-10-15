@@ -1,35 +1,64 @@
 import type { StockBalance } from '../services/api'
+import type { MovementKind } from './MovementForm'
 
 interface StockTableProps {
   stock: StockBalance[]
-  onEdit?: (item: StockBalance) => void
-  onDelete?: (item: StockBalance) => void
+  canAdjust: boolean
+  onMovement: (kind: MovementKind, item: StockBalance) => void
+  onHistory: (item: StockBalance) => void
 }
 
-export function StockTable({ stock, onEdit, onDelete }: StockTableProps) {
+const ACTIONS: { kind: MovementKind; label: string; managerOnly?: boolean }[] = [
+  { kind: 'entry', label: 'Entrada' },
+  { kind: 'exit', label: 'Saída' },
+  { kind: 'transfer', label: 'Transferir' },
+  { kind: 'adjustment', label: 'Ajustar', managerOnly: true },
+]
+
+function keyOf(item: StockBalance) {
+  return `${item.productId}-${item.storageId}-${item.batch}`
+}
+
+function formatValue(item: StockBalance) {
+  return (item.balance * item.productPrice).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  })
+}
+
+export function StockTable({ stock, canAdjust, onMovement, onHistory }: StockTableProps) {
   if (stock.length === 0) {
     return <p className="text-sm text-ink-muted">Nenhum saldo registrado.</p>
   }
 
+  const actions = ACTIONS.filter((action) => !action.managerOnly || canAdjust)
+
   return (
     <>
-      {/* Mobile: stacked cards, one per balance line, with full-size touch targets */}
-      <div className="flex flex-col gap-3 sm:hidden">
+      {/* Celular e tablet: cartões, um por saldo, com áreas de toque de 44px */}
+      <div className="grid gap-3 sm:grid-cols-2 xl:hidden">
         {stock.map((item) => (
-          <div
-            key={`${item.productId}-${item.storageId}-${item.batch}`}
-            className="rounded-xl border border-line bg-cream p-4"
-          >
-            <p className="font-medium text-ink">{item.productName}</p>
-            <p className="text-sm text-ink-muted">
-              {item.storageName}
-              <span className="block text-xs text-ink-muted/70">{item.storageAddress}</span>
-            </p>
+          <div key={keyOf(item)} className="flex flex-col rounded-xl border border-line bg-cream p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-medium text-ink">{item.productName}</p>
+                <p className="text-sm text-ink-muted">
+                  {item.storageName}
+                  <span className="block text-xs text-ink-muted/70">{item.storageAddress}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => onHistory(item)}
+                className="-mr-2 -mt-2 flex h-11 shrink-0 items-center rounded-lg px-2 text-sm font-medium text-honey-text transition hover:bg-cream-soft"
+              >
+                Histórico
+              </button>
+            </div>
 
-            <dl className="mt-3 grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
-              <div>
+            <dl className="mb-3 mt-3 grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
+              <div className="min-w-0">
                 <dt className="text-xs text-ink-muted">Lote</dt>
-                <dd className="font-mono text-ink-muted">{item.batch}</dd>
+                <dd className="truncate font-mono text-ink-muted">{item.batch}</dd>
               </div>
               <div>
                 <dt className="text-xs text-ink-muted">Saldo</dt>
@@ -37,41 +66,31 @@ export function StockTable({ stock, onEdit, onDelete }: StockTableProps) {
               </div>
               <div>
                 <dt className="text-xs text-ink-muted">Valor</dt>
-                <dd className="tabular-nums font-medium text-ink">
-                  {(item.balance * item.productPrice).toLocaleString('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                  })}
-                </dd>
+                <dd className="tabular-nums font-medium text-ink">{formatValue(item)}</dd>
               </div>
             </dl>
 
-            {(onEdit || onDelete) && (
-              <div className="mt-3 flex gap-2 border-t border-line pt-3">
-                {onEdit && (
-                  <button
-                    onClick={() => onEdit(item)}
-                    className="flex h-11 flex-1 items-center justify-center rounded-lg text-sm font-medium text-ink-muted transition hover:bg-cream-soft hover:text-honey-dark"
-                  >
-                    Editar
-                  </button>
-                )}
-                {onDelete && (
-                  <button
-                    onClick={() => onDelete(item)}
-                    className="flex h-11 flex-1 items-center justify-center rounded-lg text-sm font-medium text-danger transition hover:bg-danger/10"
-                  >
-                    Remover
-                  </button>
-                )}
-              </div>
-            )}
+            <div
+              className={`mt-auto grid gap-1 border-t border-line pt-3 ${
+                actions.length === 4 ? 'grid-cols-2 min-[400px]:grid-cols-4' : 'grid-cols-3'
+              }`}
+            >
+              {actions.map((action) => (
+                <button
+                  key={action.kind}
+                  onClick={() => onMovement(action.kind, item)}
+                  className="flex h-11 items-center justify-center rounded-lg text-sm font-medium text-ink-muted transition hover:bg-cream-soft hover:text-honey-dark"
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Desktop/tablet: dense table */}
-      <div className="hidden overflow-x-auto sm:block">
+      {/* Desktop: tabela densa */}
+      <div className="hidden overflow-x-auto xl:block">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-line text-ink-muted">
@@ -80,49 +99,48 @@ export function StockTable({ stock, onEdit, onDelete }: StockTableProps) {
               <th className="py-2 font-medium">Lote</th>
               <th className="py-2 text-right font-medium">Saldo</th>
               <th className="py-2 text-right font-medium">Valor</th>
-              {(onEdit || onDelete) && <th className="py-2" />}
+              <th className="py-2">
+                <span className="sr-only">Ações</span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
             {stock.map((item) => (
-              <tr key={`${item.productId}-${item.storageId}-${item.batch}`}>
-                <td className="py-2 text-ink">{item.productName}</td>
-                <td className="py-2 text-ink-muted">
+              <tr key={keyOf(item)}>
+                <td className="py-2 pr-3 text-ink">{item.productName}</td>
+                <td className="py-2 pr-3 text-ink-muted">
                   {item.storageName}
                   <span className="block text-xs text-ink-muted/70">{item.storageAddress}</span>
                 </td>
-                <td className="py-2 font-mono text-ink-muted">{item.batch}</td>
-                <td className="py-2 text-right tabular-nums text-ink">
+                <td className="py-2 pr-3 font-mono text-ink-muted">{item.batch}</td>
+                <td className="py-2 pl-3 text-right tabular-nums text-ink">
                   {item.balance.toLocaleString('pt-BR')}
                 </td>
-                <td className="py-2 text-right tabular-nums font-medium text-ink">
-                  {(item.balance * item.productPrice).toLocaleString('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                  })}
+                <td className="py-2 pl-3 text-right tabular-nums font-medium text-ink">
+                  {formatValue(item)}
                 </td>
-                {(onEdit || onDelete) && (
-                  <td className="py-2 text-right">
-                    <div className="flex justify-end gap-2">
-                      {onEdit && (
-                        <button
-                          onClick={() => onEdit(item)}
-                          className="rounded-md px-2 py-1.5 text-ink-muted transition hover:bg-cream-soft hover:text-honey-dark"
-                        >
-                          Editar
-                        </button>
-                      )}
-                      {onDelete && (
-                        <button
-                          onClick={() => onDelete(item)}
-                          className="rounded-md px-2 py-1.5 text-danger transition hover:bg-danger/10"
-                        >
-                          Remover
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                )}
+                <td className="py-2 pl-3 text-right">
+                  <div className="flex justify-end gap-1 whitespace-nowrap">
+                    {actions.map((action) => (
+                      <button
+                        key={action.kind}
+                        onClick={() => onMovement(action.kind, item)}
+                        aria-label={`${action.label}: ${item.productName}, lote ${item.batch}, ${item.storageName}`}
+                        className="rounded-md px-2 py-1.5 text-ink-muted transition hover:bg-cream-soft hover:text-honey-dark"
+                      >
+                        {action.label}
+                      </button>
+                    ))}
+                    <span className="mx-1 w-px self-stretch bg-line" aria-hidden="true" />
+                    <button
+                      onClick={() => onHistory(item)}
+                      aria-label={`Histórico: ${item.productName}, lote ${item.batch}, ${item.storageName}`}
+                      className="rounded-md px-2 py-1.5 font-medium text-honey-text transition hover:bg-cream-soft"
+                    >
+                      Histórico
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
