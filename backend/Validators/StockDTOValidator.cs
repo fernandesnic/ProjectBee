@@ -15,22 +15,21 @@ public abstract class BaseStockValidator<T> : AbstractValidator<T> where T : ISt
             .GreaterThan(0).WithMessage("O saldo inicial deve ser maior que zero.");
 
         RuleFor(x => x.ProductId)
-            .NotEmpty().WithMessage("O Id do produto é obrigatório.") 
-            .MustAsync(async (id, cancellationToken) =>
-            {
-                return await _db.Products.AnyAsync(p => p.Id == id, cancellationToken);
-            }).WithMessage("O Produto informado não existe no banco de dados.");
+            .NotEmpty().WithMessage("O Id do produto é obrigatório.")
+            .MustAsync(async (id, ct) =>
+                await _db.Products.AnyAsync(p => p.Id == id && p.IsActive, ct))
+            .WithMessage("O produto informado não existe ou está inativo.");
 
         RuleFor(x => x.StorageId)
-            .NotEmpty().WithMessage("O Id do armazem é obrigatório.") 
-            .MustAsync(async (id, cancellationToken) =>
-            {
-                return await _db.Storages.AnyAsync(s => s.Id == id && s.IsActive, cancellationToken);
-            }).WithMessage("O Armazém informado não existe ou está inativo.");
+            .NotEmpty().WithMessage("O Id do armazém é obrigatório.")
+            .MustAsync(async (id, ct) =>
+                await _db.Storages.AnyAsync(s => s.Id == id && s.IsActive, ct))
+            .WithMessage("O armazém informado não existe ou está inativo.");
+
         RuleFor(x => x.Batch)
             .NotEmpty().WithMessage("O lote é obrigatório.")
-            .Matches("^[a-zA-Z0-9]+$").WithMessage("Apenas caracteres alfanuméricos são permitidos.");
-       
+            .Matches("^[A-Z0-9-]{1,30}$")
+            .WithMessage("O lote deve conter apenas letras maiúsculas, números e hífen (até 30 caracteres).");
     }
 }
 
