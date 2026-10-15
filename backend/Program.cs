@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using System.Text;
+using ProjectBee.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -74,6 +75,8 @@ builder.Services.AddValidatorsFromAssemblyContaining<CreateProductDTOValidator>(
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddScoped<StockMovementService>();
+
 builder.Services.AddSingleton<TokenService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -120,6 +123,8 @@ app.MapStorageEndpoints();
 
 app.MapStockEndpoints();
 
+app.MapMovementEndpoints();
+
 app.Run();
 
 public record LoginDTO(string Email, string Password);
@@ -134,3 +139,4 @@ public record StorageResponseDTO(Guid Id, string Name, string IdNumber, string A
 public record CreateStockDTO(Guid ProductId, Guid StorageId, int Balance, string Batch) : IStockDTO;
 public record UpdateStockDTO(int Balance);
 public record StockResponseDTO(Guid ProductId, string ProductName, decimal ProductPrice, Guid StorageId, string StorageName, string StorageAddress, int Balance, string Batch);
+public record CreateEntryDTO(Guid ProductId, Guid StorageId, string Batch, int Quantity);

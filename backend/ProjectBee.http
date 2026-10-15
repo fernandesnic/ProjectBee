@@ -290,3 +290,15 @@ DELETE {{host}}/api/storages/{{storageId}}
 
 ### Remover produto -> espera 204 NoContent
 DELETE {{host}}/api/products/{{productId}}
+
+### Entrada -> espera 200 com saldoAtual
+POST {{host}}/api/movements/entry
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{
+  "productId": "{{productId}}",
+  "storageId": "{{storageId}}",
+  "batch": "LOTE-2026-010",
+  "quantity": 50
+}
