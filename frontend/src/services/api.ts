@@ -171,3 +171,79 @@ export async function updateStock(
 export async function deleteStock(productId: string, storageId: string, batch: string) {
   await api.delete(`/api/stock/${productId}/${storageId}/${batch}`)
 }
+
+export type MovementType =
+  | 'Entry'
+  | 'Exit'
+  | 'TransferOut'
+  | 'TransferIn'
+  | 'Adjustment'
+  | 'OpeningBalance'
+
+export interface Movement {
+  id: string
+  type: MovementType
+  productId: string
+  productName: string
+  storageId: string
+  storageName: string
+  batch: string
+  quantity: number
+  reason: string | null
+  transferId: string | null
+  createdBy: string
+  createdAt: string
+}
+
+export interface MovementResult {
+  mensagem: string
+  saldoAtual: number
+}
+
+export interface StockMovementPayload {
+  productId: string
+  storageId: string
+  batch: string
+  quantity: number
+}
+
+export interface TransferPayload {
+  productId: string
+  fromStorageId: string
+  toStorageId: string
+  batch: string
+  quantity: number
+}
+
+export interface AdjustmentPayload {
+  productId: string
+  storageId: string
+  batch: string
+  countedQuantity: number
+  reason: string
+}
+
+export async function registerEntry(payload: StockMovementPayload) {
+  const { data } = await api.post<MovementResult>('/api/movements/entry', payload)
+  return data
+}
+
+export async function registerExit(payload: StockMovementPayload) {
+  const { data } = await api.post<MovementResult>('/api/movements/exit', payload)
+  return data
+}
+
+export async function registerTransfer(payload: TransferPayload) {
+  const { data } = await api.post<MovementResult>('/api/movements/transfer', payload)
+  return data
+}
+
+export async function registerAdjustment(payload: AdjustmentPayload) {
+  const { data } = await api.post<MovementResult>('/api/movements/adjustment', payload)
+  return data
+}
+
+export async function getMovements(filter: { productId?: string; storageId?: string; batch?: string }) {
+  const { data } = await api.get<Movement[]>('/api/movements', { params: filter })
+  return data
+}
