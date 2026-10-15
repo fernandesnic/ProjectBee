@@ -1,320 +1,157 @@
- @host = http://localhost:5000
+@host = http://localhost:5054
 @contentType = application/json
 
-# Cole aqui os IDs retornados pelos POSTs de criacao
-@productId = 4e576ee3-16ae-4e11-95c8-6829f5c7e4bf
-@storageId = 22a5e400-35ee-4ab3-aec6-4611991dd121
+# Senha do usuário demo: a mesma configurada em "Demo:Password" nos user secrets.
+@demoEmail = demo@projectbee.dev
+@demoPassword = SuaSenhaDemo@123
+
+# Rode na ordem. O login guarda o token e os POSTs de criação guardam os IDs,
+# então as requisições seguintes já usam os valores certos.
+@token = {{login.response.body.$.token}}
+@productId = {{createProduct.response.body.$.id}}
+@storageId = {{createStorage.response.body.$.id}}
+@storageId2 = {{createStorage2.response.body.$.id}}
 
 
 ### =====================================================
 ### HEALTH CHECK
 ### =====================================================
 
-GET {{host}}/
-Accept: text/plain
+GET {{host}}/health
 
 
 ### =====================================================
-### PRODUTOS - Caminho feliz
+### AUTENTICAÇÃO
 ### =====================================================
 
-### Criar produto -> espera 201 Created
-POST {{host}}/api/products
+### Login do demo (Manager) -> 200 com token
+# @name login
+POST {{host}}/api/auth/login
 Content-Type: {{contentType}}
 
-{
-  "name": "Mel Silvestre 500g",
-  "sku": "MEL-500-SIL",
-  "desc": "Mel silvestre puro, pote de vidro 500g",
-  "price": 34.90
-}
+{ "email": "{{demoEmail}}", "password": "{{demoPassword}}" }
 
-### Criar segundo produto -> espera 201 Created
-POST {{host}}/api/products
+### Senha errada -> 401
+POST {{host}}/api/auth/login
 Content-Type: {{contentType}}
 
-{
-  "name": "Propolis Extrato 30ml",
-  "sku": "PROP-30-EXT",
-  "desc": "Extrato de propolis verde, frasco 30ml",
-  "price": 27.50
-}
+{ "email": "{{demoEmail}}", "password": "senha-errada" }
 
-### Listar todos -> espera 200 OK
+### Sem token -> 401
 GET {{host}}/api/products
-Accept: {{contentType}}
-
-### Buscar por ID -> espera 200 OK
-GET {{host}}/api/products/{{productId}}
-Accept: {{contentType}}
-
-### Atualizar -> espera 200 OK
-PUT {{host}}/api/products/{{productId}}
-Content-Type: {{contentType}}
-
-{
-  "name": "Mel Silvestre 500g - Safra 2026",
-  "desc": "Mel silvestre puro, safra 2026, pote de vidro 500g",
-  "price": 39.90,
-  "isActive": true
-}
 
 
 ### =====================================================
-### PRODUTOS - Casos de erro (validacao)
-### Esta secao e a que prova que suas regras funcionam
+### PRODUTOS
 ### =====================================================
 
-### Preco zero -> espera 400 ValidationProblem
+### Criar produto -> 201 (SKU aleatório para poder repetir)
+# @name createProduct
 POST {{host}}/api/products
-Content-Type: {{contentType}}
-
-{
-  "name": "Produto Invalido",
-  "sku": "INV-001",
-  "desc": "Preco deve ser maior que zero",
-  "price": 0
-}
-
-### Nome com menos de 3 caracteres -> espera 400 ValidationProblem
-POST {{host}}/api/products
-Content-Type: {{contentType}}
-
-{
-  "name": "AB",
-  "sku": "INV-002",
-  "desc": "Nome curto demais",
-  "price": 10.00
-}
-
-### SKU com minusculas -> espera 400 (regex ^[A-Z0-9-]{3,15}$)
-POST {{host}}/api/products
-Content-Type: {{contentType}}
-
-{
-  "name": "Produto SKU Invalido",
-  "sku": "mel-500-sil",
-  "desc": "SKU fora do padrao",
-  "price": 10.00
-}
-
-### SKU duplicado -> espera 400 (validacao assincrona no banco)
-POST {{host}}/api/products
-Content-Type: {{contentType}}
-
-{
-  "name": "Mel Duplicado",
-  "sku": "MEL-500-SIL",
-  "desc": "SKU ja existente",
-  "price": 34.90
-}
-
-### ID inexistente -> espera 404 NotFound
-GET {{host}}/api/products/11111111-1111-1111-1111-111111111111
-Accept: {{contentType}}
-
-
-### =====================================================
-### ARMAZENS
-### Atencao: a rota esta com S maiusculo no codigo atual
-### =====================================================
-
-### Criar armazem -> espera 201 Created
-POST {{host}}/api/Storages
-Content-Type: {{contentType}}
-
-{
-  "idNumber": "SP1",
-  "addressNumber": "1250",
-  "addressStreet": "Rua das Colmeias",
-  "addressCity": "Sao Paulo"
-}
-
-### Criar segundo armazem -> espera 201 Created
-POST {{host}}/api/Storages
-Content-Type: {{contentType}}
-
-{
-  "idNumber": "SRQ",
-  "addressNumber": "S/N",
-  "addressStreet": "Estrada do Apiario, km 12",
-  "addressCity": "Sao Roque"
-}
-
-### Listar todos -> espera 200 OK
-GET {{host}}/api/Storages
-Accept: {{contentType}}
-
-### Buscar por ID -> espera 200 OK
-GET {{host}}/api/Storages/{{storageId}}
-Accept: {{contentType}}
-
-### Atualizar -> espera 200 OK
-PUT {{host}}/api/Storages/{{storageId}}
-Content-Type: {{contentType}}
-
-{
-  "idNumber": "SP1",
-  "addressNumber": "1250-A",
-  "addressStreet": "Rua das Colmeias",
-  "addressCity": "Sao Paulo"
-}
-
-### Cidade vazia -> espera 400 ValidationProblem
-POST {{host}}/api/Storages
-Content-Type: {{contentType}}
-
-{
-  "idNumber": "XXX",
-  "addressNumber": "100",
-  "addressStreet": "Rua Teste",
-  "addressCity": ""
-}
-
-### BUG CONHECIDO: idNumber com 4+ caracteres -> retorna 400
-### O validator usa .Length(3), que exige exatamente 3 caracteres.
-### O README promete suportar "Galpao 3B". Corrigir para .Length(3, 20).
-POST {{host}}/api/Storages
-Content-Type: {{contentType}}
-
-{
-  "idNumber": "GALPAO-3B",
-  "addressNumber": "77",
-  "addressStreet": "Avenida Industrial",
-  "addressCity": "Barueri"
-}
-
-
-### =====================================================
-### ESTOQUE
-### =====================================================
-
-### Registrar saldo -> espera 200 OK
-POST {{host}}/api/stock
-Content-Type: {{contentType}}
-
-{
-  "productId": "{{productId}}",
-  "storageId": "{{storageId}}",
-  "balance": 120,
-  "batch": "LOTE-2026-001"
-}
-
-### Segundo lote do MESMO produto no MESMO armazem -> espera 200 OK
-### (a PK e composta por ProductId + StorageId + Batch)
-POST {{host}}/api/stock
-Content-Type: {{contentType}}
-
-{
-  "productId": "{{productId}}",
-  "storageId": "{{storageId}}",
-  "balance": 45,
-  "batch": "LOTE-2026-002"
-}
-
-### Repetir o primeiro POST (mesmo produto+armazem+lote) -> espera 409 Conflict
-POST {{host}}/api/stock
-Content-Type: {{contentType}}
-
-{
-  "productId": "{{productId}}",
-  "storageId": "{{storageId}}",
-  "balance": 120,
-  "batch": "LOTE-2026-001"
-}
-
-### Listar saldos com produto e armazem -> espera 200 OK
-GET {{host}}/api/stock
-Accept: {{contentType}}
-
-### Atualizar saldo do lote LOTE-2026-001 -> espera 200 OK
-PUT {{host}}/api/stock/{{productId}}/{{storageId}}/LOTE-2026-001
-Content-Type: {{contentType}}
-
-{
-  "balance": 200
-}
-
-### Atualizar saldo do lote LOTE-2026-002 -> espera 200 OK
-### (prova que o lote 001 acima nao foi afetado por engano)
-PUT {{host}}/api/stock/{{productId}}/{{storageId}}/LOTE-2026-002
-Content-Type: {{contentType}}
-
-{
-  "balance": 60
-}
-
-### Lote inexistente -> espera 404 NotFound
-PUT {{host}}/api/stock/{{productId}}/{{storageId}}/LOTE-INEXISTENTE
-Content-Type: {{contentType}}
-
-{
-  "balance": 10
-}
-
-### Produto inexistente -> espera 400 ValidationProblem
-POST {{host}}/api/stock
-Content-Type: {{contentType}}
-
-{
-  "productId": "11111111-1111-1111-1111-111111111111",
-  "storageId": "{{storageId}}",
-  "balance": 10,
-  "batch": "LOTE-FANTASMA"
-}
-
-### Saldo zero -> espera 400 ValidationProblem
-POST {{host}}/api/stock
-Content-Type: {{contentType}}
-
-{
-  "productId": "{{productId}}",
-  "storageId": "{{storageId}}",
-  "balance": 0,
-  "batch": "LOTE-2026-003"
-}
-
-
-### =====================================================
-### LIMPEZA
-### =====================================================
-
-### Remover saldo do lote LOTE-2026-001 -> espera 204 NoContent
-DELETE {{host}}/api/stock/{{productId}}/{{storageId}}/LOTE-2026-001
-
-### Remover saldo do lote LOTE-2026-002 -> espera 204 NoContent
-DELETE {{host}}/api/stock/{{productId}}/{{storageId}}/LOTE-2026-002
-
-### Remover armazem -> espera 204 NoContent
-DELETE {{host}}/api/storages/{{storageId}}
-
-### Remover produto -> espera 204 NoContent
-DELETE {{host}}/api/products/{{productId}}
-
-### Entrada -> espera 200 com saldoAtual
-POST {{host}}/api/movements/entry
 Content-Type: {{contentType}}
 Authorization: Bearer {{token}}
 
-{
-  "productId": "{{productId}}",
-  "storageId": "{{storageId}}",
-  "batch": "LOTE-2026-010",
-  "quantity": 50
-}
+{ "name": "Mel Silvestre 1kg", "sku": "MEL-1K-{{$randomInt 1000 9999}}", "desc": "Mel silvestre puro, pote 1kg", "price": 59.90 }
+
+### Listar -> 200
+GET {{host}}/api/products
+Authorization: Bearer {{token}}
+
+### Buscar por ID -> 200
+GET {{host}}/api/products/{{productId}}
+Authorization: Bearer {{token}}
+
+### Atualizar -> 200 (isActive é obrigatório)
+PUT {{host}}/api/products/{{productId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "name": "Mel Silvestre 1kg - Safra 2026", "desc": "Mel silvestre puro, safra 2026, pote 1kg", "price": 64.90, "isActive": true }
+
+### Preço zero -> 400
+POST {{host}}/api/products
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "name": "Produto Inválido", "sku": "INV-001", "desc": "Preço deve ser maior que zero", "price": 0 }
+
+### SKU com minúsculas -> 400 (padrão ^[A-Z0-9-]{3,15}$)
+POST {{host}}/api/products
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "name": "Produto SKU Inválido", "sku": "mel-500-sil", "desc": "SKU fora do padrão", "price": 10.00 }
+
+### SKU duplicado (o seed já criou MEL-500-SIL) -> 400
+POST {{host}}/api/products
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "name": "Mel Duplicado", "sku": "MEL-500-SIL", "desc": "SKU já existente", "price": 34.90 }
+
+### Atualizar sem isActive -> 400 (evita desativar sem querer)
+PUT {{host}}/api/products/{{productId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "name": "Mel Silvestre 1kg", "desc": "Sem isActive", "price": 59.90 }
+
+### ID inexistente -> 404
+GET {{host}}/api/products/11111111-1111-1111-1111-111111111111
+Authorization: Bearer {{token}}
+
+
+### =====================================================
+### ARMAZÉNS
+### =====================================================
+
+### Criar armazém -> 201
+# @name createStorage
+POST {{host}}/api/storages
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "idNumber": "CPS-{{$randomInt 100 999}}", "name": "Galpão Campinas", "addressNumber": "1250-A", "addressStreet": "Rua das Colmeias", "addressCity": "Campinas" }
+
+### Criar segundo armazém (destino das transferências) -> 201
+# @name createStorage2
+POST {{host}}/api/storages
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "idNumber": "BRU-{{$randomInt 100 999}}", "name": "Depósito Barueri", "addressNumber": "S/N", "addressStreet": "Avenida Industrial", "addressCity": "Barueri" }
+
+### Listar -> 200
+GET {{host}}/api/storages
+Authorization: Bearer {{token}}
+
+### Atualizar -> 200 (idNumber não muda; isActive é obrigatório)
+PUT {{host}}/api/storages/{{storageId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "name": "Galpão Campinas", "addressNumber": "1250-B", "addressStreet": "Rua das Colmeias", "addressCity": "Campinas", "isActive": true }
+
+### Cidade vazia -> 400
+POST {{host}}/api/storages
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "idNumber": "XXX", "name": "Armazém Inválido", "addressNumber": "100", "addressStreet": "Rua Teste", "addressCity": "" }
+
 
 ### =====================================================
 ### MOVIMENTAÇÕES
 ### =====================================================
 
-### 1. Entrada -> 200, saldoAtual 50
+### 1. Entrada em lote novo -> 200, saldoAtual 50
 POST {{host}}/api/movements/entry
 Content-Type: {{contentType}}
 Authorization: Bearer {{token}}
 
 { "productId": "{{productId}}", "storageId": "{{storageId}}", "batch": "LOTE-TESTE-01", "quantity": 50 }
 
-### 2. Entrada de novo -> 200, saldoAtual 100
+### 2. Entrada no mesmo lote -> 200, saldoAtual 100
 POST {{host}}/api/movements/entry
 Content-Type: {{contentType}}
 Authorization: Bearer {{token}}
@@ -328,14 +165,14 @@ Authorization: Bearer {{token}}
 
 { "productId": "{{productId}}", "storageId": "{{storageId}}", "batch": "LOTE-TESTE-01", "quantity": 30 }
 
-### 4. Saída maior que o saldo -> 422 Saldo insuficiente
+### 4. Saída maior que o saldo -> 422 (detail: "Saldo insuficiente. Disponível: 70, solicitado: 500.")
 POST {{host}}/api/movements/exit
 Content-Type: {{contentType}}
 Authorization: Bearer {{token}}
 
 { "productId": "{{productId}}", "storageId": "{{storageId}}", "batch": "LOTE-TESTE-01", "quantity": 500 }
 
-### 5. Transferência -> 200, saldoAtual 50 (sobra na origem)
+### 5. Transferência -> 200, saldoAtual 50 (o que sobra na origem)
 POST {{host}}/api/movements/transfer
 Content-Type: {{contentType}}
 Authorization: Bearer {{token}}
@@ -349,14 +186,14 @@ Authorization: Bearer {{token}}
 
 { "productId": "{{productId}}", "fromStorageId": "{{storageId}}", "toStorageId": "{{storageId}}", "batch": "LOTE-TESTE-01", "quantity": 5 }
 
-### 7. Ajuste por contagem -> 200, saldoAtual 47
+### 7. Ajuste por contagem (contou 47, havia 50) -> 200, saldoAtual 47, movimento de -3
 POST {{host}}/api/movements/adjustment
 Content-Type: {{contentType}}
 Authorization: Bearer {{token}}
 
 { "productId": "{{productId}}", "storageId": "{{storageId}}", "batch": "LOTE-TESTE-01", "countedQuantity": 47, "reason": "Inventário mensal - 3 unidades avariadas" }
 
-### 8. Mesmo ajuste de novo -> 422 Não há diferença
+### 8. Mesmo ajuste de novo -> 422 (não há diferença)
 POST {{host}}/api/movements/adjustment
 Content-Type: {{contentType}}
 Authorization: Bearer {{token}}
@@ -370,9 +207,67 @@ Authorization: Bearer {{token}}
 
 { "productId": "{{productId}}", "storageId": "{{storageId}}", "batch": "LOTE-TESTE-01", "countedQuantity": 40, "reason": "" }
 
-### 10. Lote com minúscula -> 400
+### 10. Lote com minúscula -> 400 (padrão ^[A-Z0-9-]{1,30}$)
 POST {{host}}/api/movements/entry
 Content-Type: {{contentType}}
 Authorization: Bearer {{token}}
 
 { "productId": "{{productId}}", "storageId": "{{storageId}}", "batch": "lote-teste", "quantity": 10 }
+
+### 11. Histórico do lote na origem -> 200, do mais recente para o mais antigo
+GET {{host}}/api/movements?productId={{productId}}&storageId={{storageId}}&batch=LOTE-TESTE-01
+Authorization: Bearer {{token}}
+
+
+### =====================================================
+### ESTOQUE (somente leitura)
+### =====================================================
+
+### Listar saldos -> 200
+GET {{host}}/api/stock
+Authorization: Bearer {{token}}
+
+### Tentar gravar saldo direto -> 405 (todo saldo muda por movimento)
+POST {{host}}/api/stock
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "productId": "{{productId}}", "storageId": "{{storageId}}", "balance": 999, "batch": "LOTE-TESTE-01" }
+
+
+### =====================================================
+### REGRAS DE DESATIVAÇÃO E EXCLUSÃO
+### =====================================================
+
+### Desativar armazém com saldo -> 422 (informa lotes e unidades que sobraram)
+PUT {{host}}/api/storages/{{storageId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "name": "Galpão Campinas", "addressNumber": "1250-B", "addressStreet": "Rua das Colmeias", "addressCity": "Campinas", "isActive": false }
+
+### Excluir armazém com saldo -> 422
+DELETE {{host}}/api/storages/{{storageId}}
+Authorization: Bearer {{token}}
+
+### Excluir produto com saldo -> 422
+DELETE {{host}}/api/products/{{productId}}
+Authorization: Bearer {{token}}
+
+### Zerar o destino da transferência (contou 0, havia 20) -> 200
+POST {{host}}/api/movements/adjustment
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "productId": "{{productId}}", "storageId": "{{storageId2}}", "batch": "LOTE-TESTE-01", "countedQuantity": 0, "reason": "Zerando para testar a exclusão" }
+
+### Excluir armazém zerado, mas com histórico -> 422 (o caminho é desativar)
+DELETE {{host}}/api/storages/{{storageId2}}
+Authorization: Bearer {{token}}
+
+### Desativar armazém zerado -> 200
+PUT {{host}}/api/storages/{{storageId2}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "name": "Depósito Barueri", "addressNumber": "S/N", "addressStreet": "Avenida Industrial", "addressCity": "Barueri", "isActive": false }
