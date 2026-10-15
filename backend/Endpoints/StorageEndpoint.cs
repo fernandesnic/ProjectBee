@@ -122,6 +122,24 @@ public static class StorageEndpointsExtensions
                 return Results.NotFound(new { mensagem = $"Armazem não encontrado" });
             }
 
+            // Armazém inativo não pode ter saldo: o estoque precisa sair por movimento antes.
+            if (Storage.IsActive && dto.IsActive == false)
+            {
+                var balances = await db.StockBalances
+                    .Where(b => b.StorageId == id && b.Balance != 0)
+                    .GroupBy(b => b.StorageId)
+                    .Select(g => new { Lots = g.Count(), Units = g.Sum(b => b.Balance) })
+                    .FirstOrDefaultAsync();
+
+                if (balances != null)
+                {
+                    return Results.Problem(
+                        title: "Desativação recusada",
+                        detail: $"O armazém ainda tem saldo em {balances.Lots} lote(s), somando {balances.Units} unidade(s). Transfira ou ajuste o estoque para zero antes de desativá-lo.",
+                        statusCode: StatusCodes.Status422UnprocessableEntity);
+                }
+            }
+
             Storage.Name = dto.Name;
             Storage.AddressCity = dto.AddressCity;
             Storage.AddressStreet = dto.AddressStreet;
@@ -135,6 +153,6 @@ public static class StorageEndpointsExtensions
         })
         .RequireAuthorization(policy => policy.RequireRole(Roles.Manager))
         .WithSummary("Atualiza um armazém")
-        .WithDescription("O IdNumber não pode ser alterado — ele identifica o armazém. Para trocar de IdNumber, cadastre um novo armazém. O campo IsActive é obrigatório: omiti-lo retorna 400, para evitar desativação acidental.");
+        .WithDescription("O IdNumber não pode ser alterado — ele identifica o armazém. Para trocar de IdNumber, cadastre um novo armazém. O campo IsActive é obrigatório: omiti-lo retorna 400, para evitar desativação acidental. Desativar um armazém que ainda tem saldo retorna 422.");
     }
 }

@@ -60,6 +60,8 @@ export function StorageForm({ storage, onSaved, onCancel }: StorageFormProps) {
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 400) {
         setErrors(err.response.data?.errors ?? {})
+      } else if (axios.isAxiosError(err) && err.response?.status === 422) {
+        setErrors({ geral: [err.response.data?.detail ?? 'O armazém não pode ser desativado.'] })
       } else {
         setErrors({ geral: ['Não foi possível salvar o armazém.'] })
       }
