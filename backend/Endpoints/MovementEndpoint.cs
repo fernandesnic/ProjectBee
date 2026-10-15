@@ -3,6 +3,8 @@ using FluentValidation;
 using ProjectBee.Services;
 using ProjectBee.Models;
 using ProjectBee.DTO.Movement;
+using Microsoft.EntityFrameworkCore;
+using ProjectBee.Data;
 
 public static class MovementEndpointsExtensions
 {
@@ -10,7 +12,44 @@ public static class MovementEndpointsExtensions
     {
         var movementsApi = app.MapGroup("/api/movements")
             .RequireAuthorization();
+            
+        movementsApi.MapGet("/", async (
+            AppDbContext db,
+            Guid? productId,
+            Guid? storageId,
+            string? batch) =>
+        {
+            var query = db.StockMovements.AsNoTracking();
 
+            if (productId.HasValue)
+                query = query.Where(m => m.ProductId == productId.Value);
+
+            if (storageId.HasValue)
+                query = query.Where(m => m.StorageId == storageId.Value);
+
+            if (!string.IsNullOrWhiteSpace(batch))
+                query = query.Where(m => m.Batch == batch);
+
+            var movements = await query
+                .OrderByDescending(m => m.CreatedAt)
+                .Take(200)
+                .Select(m => new MovementResponseDTO(
+                    m.Id,
+                    m.Type.ToString(),
+                    m.ProductId,
+                    m.Product.Name,
+                    m.StorageId,
+                    m.Storage.Name,
+                    m.Batch,
+                    m.Quantity,
+                    m.Reason,
+                    m.TransferId,
+                    m.CreatedBy,
+                    m.CreatedAt))
+                .ToListAsync();
+
+            return Results.Ok(movements);
+        });
         movementsApi.MapPost("/entry", async (
             StockMovementDTO dto,
             IValidator<StockMovementDTO> validator,
