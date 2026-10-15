@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="../tests/ProjectBee.Tests/ProjectBee.Tests.csproj" />
   <Project Path="ProjectBee.csproj" />
 </Solution>
