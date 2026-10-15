@@ -126,19 +126,3 @@ app.MapStockEndpoints();
 app.MapMovementEndpoints();
 
 app.Run();
-
-public record LoginDTO(string Email, string Password);
-public record RegisterDTO(string Nome, string Email, string Password);
-
-public record CreateProductDTO(string Name, string SKU, string Desc, decimal Price) : IProductDTO;
-public record UpdateProductDTO(string Name, string Desc, decimal Price, bool? IsActive) : IProductDTO;
-public record ProductResponseDTO(Guid Id, string Name, string SKU, string Desc, decimal Price, bool IsActive);
-public record CreateStorageDTO(string IdNumber, string Name, string AddressNumber, string AddressStreet, string AddressCity) : IStorageDTO;
-public record UpdateStorageDTO(string Name, string AddressNumber, string AddressStreet, string AddressCity, bool? IsActive) : IStorageDTO;
-public record StorageResponseDTO(Guid Id, string Name, string IdNumber, string AddressNumber, string AddressStreet, string AddressCity, bool IsActive);
-public record CreateStockDTO(Guid ProductId, Guid StorageId, int Balance, string Batch) : IStockDTO;
-public record UpdateStockDTO(int Balance);
-public record StockResponseDTO(Guid ProductId, string ProductName, decimal ProductPrice, Guid StorageId, string StorageName, string StorageAddress, int Balance, string Batch);
-public record StockMovementDTO(Guid ProductId, Guid StorageId, string Batch, int Quantity);
-public record TransferDTO(Guid ProductId, Guid FromStorageId, Guid ToStorageId, string Batch, int Quantity);
-public record AdjustmentDTO(Guid ProductId, Guid StorageId, string Batch, int CountedQuantity, string Reason);

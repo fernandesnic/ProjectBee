@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FluentValidation;
 using ProjectBee.Services;
 using ProjectBee.Models;
+using ProjectBee.DTO.Movement;
 
 public static class MovementEndpointsExtensions
 {

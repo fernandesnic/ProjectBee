@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using ProjectBee.Data;
+using ProjectBee.DTO.Movement;
 
 public class StockMovementValidator : AbstractValidator<StockMovementDTO>
 {

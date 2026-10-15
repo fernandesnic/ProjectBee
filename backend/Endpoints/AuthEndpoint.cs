@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using ProjectBee.Models;
+using ProjectBee.DTO.Auth;
 
 public static class AuthEndpointsExtensions
 {

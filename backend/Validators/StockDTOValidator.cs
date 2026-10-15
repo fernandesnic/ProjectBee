@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using ProjectBee.Data;
 using ProjectBee.Interfaces;
+using ProjectBee.DTO.Stock;
 
 public abstract class BaseStockValidator<T> : AbstractValidator<T> where T : IStockDTO
 {

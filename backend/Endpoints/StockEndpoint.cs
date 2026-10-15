@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using ProjectBee.Data;
 using ProjectBee.Models;
+using ProjectBee.DTO.Stock;
 
 public static class StockEndpointsExtensions
 {

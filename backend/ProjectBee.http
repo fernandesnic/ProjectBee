@@ -302,3 +302,77 @@ Authorization: Bearer {{token}}
   "batch": "LOTE-2026-010",
   "quantity": 50
 }
+
+### =====================================================
+### MOVIMENTAÇÕES
+### =====================================================
+
+### 1. Entrada -> 200, saldoAtual 50
+POST {{host}}/api/movements/entry
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "productId": "{{productId}}", "storageId": "{{storageId}}", "batch": "LOTE-TESTE-01", "quantity": 50 }
+
+### 2. Entrada de novo -> 200, saldoAtual 100
+POST {{host}}/api/movements/entry
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "productId": "{{productId}}", "storageId": "{{storageId}}", "batch": "LOTE-TESTE-01", "quantity": 50 }
+
+### 3. Saída -> 200, saldoAtual 70
+POST {{host}}/api/movements/exit
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "productId": "{{productId}}", "storageId": "{{storageId}}", "batch": "LOTE-TESTE-01", "quantity": 30 }
+
+### 4. Saída maior que o saldo -> 422 Saldo insuficiente
+POST {{host}}/api/movements/exit
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "productId": "{{productId}}", "storageId": "{{storageId}}", "batch": "LOTE-TESTE-01", "quantity": 500 }
+
+### 5. Transferência -> 200, saldoAtual 50 (sobra na origem)
+POST {{host}}/api/movements/transfer
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "productId": "{{productId}}", "fromStorageId": "{{storageId}}", "toStorageId": "{{storageId2}}", "batch": "LOTE-TESTE-01", "quantity": 20 }
+
+### 6. Transferência para o mesmo armazém -> 400
+POST {{host}}/api/movements/transfer
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "productId": "{{productId}}", "fromStorageId": "{{storageId}}", "toStorageId": "{{storageId}}", "batch": "LOTE-TESTE-01", "quantity": 5 }
+
+### 7. Ajuste por contagem -> 200, saldoAtual 47
+POST {{host}}/api/movements/adjustment
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "productId": "{{productId}}", "storageId": "{{storageId}}", "batch": "LOTE-TESTE-01", "countedQuantity": 47, "reason": "Inventário mensal - 3 unidades avariadas" }
+
+### 8. Mesmo ajuste de novo -> 422 Não há diferença
+POST {{host}}/api/movements/adjustment
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "productId": "{{productId}}", "storageId": "{{storageId}}", "batch": "LOTE-TESTE-01", "countedQuantity": 47, "reason": "Inventário mensal - 3 unidades avariadas" }
+
+### 9. Ajuste sem motivo -> 400
+POST {{host}}/api/movements/adjustment
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "productId": "{{productId}}", "storageId": "{{storageId}}", "batch": "LOTE-TESTE-01", "countedQuantity": 40, "reason": "" }
+
+### 10. Lote com minúscula -> 400
+POST {{host}}/api/movements/entry
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "productId": "{{productId}}", "storageId": "{{storageId}}", "batch": "lote-teste", "quantity": 10 }
