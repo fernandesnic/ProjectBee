@@ -61,6 +61,12 @@ function toErrors(err: unknown, kind: MovementKind, isNewLot: boolean): Errors {
     return { geral: [data?.detail ?? 'O movimento foi recusado.'] }
   }
 
+  if (status === 409) {
+    return {
+      geral: [data?.detail ?? 'O saldo foi alterado por outra operação. Feche e confira o saldo atualizado.'],
+    }
+  }
+
   if (status === 403) {
     return { geral: ['Seu perfil não tem permissão para este movimento.'] }
   }
