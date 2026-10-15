@@ -28,15 +28,33 @@ public static class BusinessDataSeedExtensions
 
         db.Storages.AddRange(galpaoSP, sitioSRQ);
 
-        db.StockBalances.AddRange(
-            new StockBalance { Product = mel, Storage = galpaoSP, Batch = "LOTE2026001", Balance = 120 },
-            new StockBalance { Product = mel, Storage = galpaoSP, Batch = "LOTE2026002", Balance = 45 },
-            new StockBalance { Product = mel, Storage = sitioSRQ, Batch = "LOTE2026001", Balance = 80 },
-            new StockBalance { Product = propolis, Storage = galpaoSP, Batch = "LOTE2026001", Balance = 200 },
-            new StockBalance { Product = geleia, Storage = sitioSRQ, Batch = "LOTE2026001", Balance = 30 },
-            new StockBalance { Product = cera, Storage = galpaoSP, Batch = "LOTE2026001", Balance = 60 },
-            new StockBalance { Product = melPropolis, Storage = sitioSRQ, Batch = "LOTE2026001", Balance = 15 }
-        );
+        var openingBalances = new (Product Product, Storage Storage, string Batch, int Quantity)[]
+        {
+            (mel, galpaoSP, "LOTE2026001", 120),
+            (mel, galpaoSP, "LOTE2026002", 45),
+            (mel, sitioSRQ, "LOTE2026001", 80),
+            (propolis, galpaoSP, "LOTE2026001", 200),
+            (geleia, sitioSRQ, "LOTE2026001", 30),
+            (cera, galpaoSP, "LOTE2026001", 60),
+            (melPropolis, sitioSRQ, "LOTE2026001", 15),
+        };
+
+        // Cada saldo nasce com o seu movimento de saldo inicial, para a soma dos movimentos fechar
+        // com o saldo desde o primeiro boot (as migrations rodam antes do seed, com a base vazia).
+        foreach (var (product, storage, batch, quantity) in openingBalances)
+        {
+            db.StockBalances.Add(new StockBalance { Product = product, Storage = storage, Batch = batch, Balance = quantity });
+            db.StockMovements.Add(new StockMovement
+            {
+                Type = MovementType.OpeningBalance,
+                Product = product,
+                Storage = storage,
+                Batch = batch,
+                Quantity = quantity,
+                Reason = "Saldo inicial de demonstração",
+                CreatedBy = "system"
+            });
+        }
 
         await db.SaveChangesAsync();
     }
