@@ -106,6 +106,7 @@ const MODULES = [
 const DONE = [
   'Saldo de estoque com chave composta (produto + armazém + lote)',
   'CRUD de produtos e armazéns',
+  'Entradas, saídas e movimentações de estoque atualizando o saldo',
   'Login e registro com Identity, token JWT com claims de role',
   'Validação assíncrona de SKU duplicado antes de gravar',
   'Erros da API padronizados em ProblemDetails (RFC 7807)',
@@ -442,8 +443,8 @@ function LandingPage() {
       >
         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink-muted">
           Backend em .NET 10 com Minimal APIs, EF Core e SQL Server; frontend
-          em React. Projeto pessoal, em desenvolvimento — e o estado abaixo é
-          honesto: o que já está de pé e o que ainda falta.
+          em React. Projeto pessoal em desenvolvimento. Abaixo, o que já está
+          pronto e o que ainda falta.
         </p>
 
         <div className="mt-10 grid gap-10 md:grid-cols-2">
@@ -517,8 +518,9 @@ function LandingPage() {
             Construído por{' '}
             <span className="font-semibold text-ink">Nicolas Fernandes</span>,
             desenvolvedor com background em ERP (Protheus/AdvPL) migrando
-            para .NET e React. As regras de negócio aqui vêm de anos vendo
-            estoque dar errado em sistema de verdade.
+            para .NET e React. As regras de negócio aqui vêm da minha
+            experiência com ERP, vendo na prática onde o estoque costuma
+            dar errado.
           </p>
           <div className="mt-4 flex gap-6 text-sm font-medium">
             <a
@@ -568,7 +570,7 @@ function LandingPage() {
             </div>
           </div>
           <p className="mt-10 text-xs text-cream/40">
-            © 2026 Nicolas Fernandes · Distribuído sob licença MIT.
+            © 2026 Nicolas Fernandes
           </p>
         </div>
       </footer>
