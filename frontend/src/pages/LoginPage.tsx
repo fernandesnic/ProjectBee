@@ -27,6 +27,8 @@ function LoginPage() {
     setError(null)
     setLoading(true)
 
+    const timer = setTimeout(() => setWaking(true), 2000)
+
     try {
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         try {
@@ -55,6 +57,7 @@ function LoginPage() {
         setError('Erro inesperado. Tente novamente.')
       }
     } finally {
+      clearTimeout(timer)
       setLoading(false)
       setWaking(false)
     }
@@ -106,9 +109,17 @@ function LoginPage() {
           {error && <p className="text-sm text-danger" role="alert">{error}</p>}
 
           {waking && (
-            <p className="text-xs text-ink-muted">
-              Acordando a API, a primeira conexão pode levar até 30 segundos...
-            </p>
+            <div
+              role="status"
+              aria-live="polite"
+              className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-cream/90 px-6 text-center backdrop-blur-sm"
+            >
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-line border-t-honey-dark" />
+              <p className="text-base font-semibold">Acordando a API...</p>
+              <p className="max-w-xs text-xs text-ink-muted">
+                Servidor gratuito: na primeira visita ele leva até 30 segundos para ligar. Só desta vez.
+              </p>
+            </div>
           )}
 
           <button
