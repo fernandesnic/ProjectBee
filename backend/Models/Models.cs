@@ -18,6 +18,7 @@ public class AppUser : IdentityUser
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public DateTime? DeletedAt { get; set; }
 
 
 }
@@ -33,6 +34,7 @@ public class Storage
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public DateTime? DeletedAt { get; set; }
 }
 
 public class StockBalance
