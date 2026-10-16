@@ -15,16 +15,17 @@ public static class BusinessDataSeedExtensions
             return; // já tem dado, não duplica em cada restart
         }
 
-        var mel = new Product { Name = "Mel Silvestre 500g", SKU = "MEL-500-SIL", Desc = "Mel silvestre puro, pote de vidro 500g", Price = 34.90m, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
-        var propolis = new Product { Name = "Própolis Extrato 30ml", SKU = "PROP-30-EXT", Desc = "Extrato de própolis verde, frasco 30ml", Price = 27.50m, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
-        var geleia = new Product { Name = "Geleia Real 10g", SKU = "GELE-10-RAI", Desc = "Geleia real pura, pote 10g", Price = 89.90m, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
-        var cera = new Product { Name = "Cera de Abelha 250g", SKU = "CERA-250-AB", Desc = "Cera de abelha em bloco, 250g", Price = 18.00m, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
-        var melPropolis = new Product { Name = "Mel com Própolis 300g", SKU = "MEL-300-PRO", Desc = "Mel silvestre com própolis, pote 300g", Price = 42.90m, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+        var now = DateTime.UtcNow;
+        var mel = new Product { Name = "Mel Silvestre 500g", SKU = "MEL-500-SIL", Desc = "Mel silvestre puro, pote de vidro 500g", Price = 34.90m, IsActive = true, CreatedAt = now, UpdatedAt = now };
+        var propolis = new Product { Name = "Própolis Extrato 30ml", SKU = "PROP-30-EXT", Desc = "Extrato de própolis verde, frasco 30ml", Price = 27.50m, IsActive = true, CreatedAt = now, UpdatedAt = now };
+        var geleia = new Product { Name = "Geleia Real 10g", SKU = "GELE-10-RAI", Desc = "Geleia real pura, pote 10g", Price = 89.90m, IsActive = true, CreatedAt = now, UpdatedAt = now };
+        var cera = new Product { Name = "Cera de Abelha 250g", SKU = "CERA-250-AB", Desc = "Cera de abelha em bloco, 250g", Price = 18.00m, IsActive = true, CreatedAt = now, UpdatedAt = now };
+        var melPropolis = new Product { Name = "Mel com Própolis 300g", SKU = "MEL-300-PRO", Desc = "Mel silvestre com própolis, pote 300g", Price = 42.90m, IsActive = true, CreatedAt = now, UpdatedAt = now };
 
         db.Products.AddRange(mel, propolis, geleia, cera, melPropolis);
 
-        var galpaoSP = new Storage { IdNumber = "SP1", Name = "Galpão São Paulo", AddressStreet = "Rua das Colmeias", AddressNumber = "1250", AddressCity = "São Paulo", IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
-        var sitioSRQ = new Storage { IdNumber = "SRQ", Name = "Sítio São Roque", AddressStreet = "Estrada do Apiário, km 12", AddressNumber = "S/N", AddressCity = "São Roque", IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+        var galpaoSP = new Storage { IdNumber = "SP1", Name = "Galpão São Paulo", AddressStreet = "Rua das Colmeias", AddressNumber = "1250", AddressCity = "São Paulo", IsActive = true, CreatedAt = now, UpdatedAt = now };
+        var sitioSRQ = new Storage { IdNumber = "SRQ", Name = "Sítio São Roque", AddressStreet = "Estrada do Apiário, km 12", AddressNumber = "S/N", AddressCity = "São Roque", IsActive = true, CreatedAt = now, UpdatedAt = now };
 
         db.Storages.AddRange(galpaoSP, sitioSRQ);
 
