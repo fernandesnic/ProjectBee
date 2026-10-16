@@ -98,7 +98,7 @@ public static class StorageEndpointsExtensions
                 return Results.NotFound(new { mensagem = $"Armazem não encontrado" });
             }
 
-            // Excluir apagaria os saldos em cascata, e os movimentos amarram o histórico ao armazém.
+            // A exclusão é lógica: a linha fica no banco e o histórico de movimentos continua apontando para ela.
             if (await db.StockBalances.AnyAsync(b => b.StorageId == id && b.Balance != 0))
             {
                 return Results.Problem(
@@ -107,22 +107,14 @@ public static class StorageEndpointsExtensions
                     statusCode: StatusCodes.Status422UnprocessableEntity);
             }
 
-            if (await db.StockMovements.AnyAsync(m => m.StorageId == id))
-            {
-                return Results.Problem(
-                    title: "Exclusão recusada",
-                    detail: "O armazém tem histórico de movimentos e não pode ser excluído. Desative-o para que não receba novos movimentos.",
-                    statusCode: StatusCodes.Status422UnprocessableEntity);
-            }
-
-            db.Storages.Remove(Storage);
+            Storage.DeletedAt = DateTime.UtcNow;
             await db.SaveChangesAsync();
 
             return Results.NoContent();
         })
         .RequireAuthorization(policy => policy.RequireRole(Roles.Manager))
         .WithSummary("Remove um armazém")
-        .WithDescription("Só é permitida para armazéns sem saldo e sem histórico de movimentos; caso contrário retorna 422. Armazéns com histórico devem ser desativados. Requer perfil Manager.");
+        .WithDescription("Exclusão lógica: marca o armazém como apagado (DeletedAt) e mantém o histórico de movimentos. Só é permitida para armazéns sem saldo em nenhum lote; caso contrário retorna 422. Requer perfil Manager.");
 
         StoragesApi.MapPut("/{id}", async (UpdateStorageDTO dto, IValidator<UpdateStorageDTO> validator, AppDbContext db, Guid id) =>
         {

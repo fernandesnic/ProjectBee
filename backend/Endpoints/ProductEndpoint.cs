@@ -101,7 +101,7 @@ public static class ProductEndpointsExtensions
         return Results.NotFound(new {mensagem = $"Produto não encontrado"});
         }
 
-            // Excluir apagaria os saldos em cascata, e os movimentos amarram o histórico ao produto.
+            // Soft delete: a linha continua no banco, então os movimentos antigos seguem apontando para o produto.
             if (await db.StockBalances.AnyAsync(b => b.ProductId == id && b.Balance != 0))
             {
                 return Results.Problem(
@@ -110,15 +110,10 @@ public static class ProductEndpointsExtensions
                     statusCode: StatusCodes.Status422UnprocessableEntity);
             }
 
-            if (await db.StockMovements.AnyAsync(m => m.ProductId == id))
-            {
-                return Results.Problem(
-                    title: "Exclusão recusada",
-                    detail: "O produto tem histórico de movimentos e não pode ser excluído. Desative-o para que não receba novos movimentos.",
-                    statusCode: StatusCodes.Status422UnprocessableEntity);
-            }
-
-            db.Products.Remove(product);
+            var now = DateTime.UtcNow;
+            product.DeletedAt = now;
+            product.IsActive = false;
+            product.UpdatedAt = now;
 
             await db.SaveChangesAsync();
 
@@ -127,7 +122,7 @@ public static class ProductEndpointsExtensions
         })
         .RequireAuthorization(policy => policy.RequireRole(Roles.Manager))
         .WithSummary("Remove um produto")
-        .WithDescription("Só é permitida para produtos sem saldo e sem histórico de movimentos; caso contrário retorna 422. Produtos com histórico devem ser desativados. Requer perfil Manager.");
+        .WithDescription("Exclusão lógica (soft delete): o produto some das listagens, mas o histórico de movimentos é preservado. Só é permitida para produtos sem saldo; caso contrário retorna 422. Requer perfil Manager.");
 
         productsApi.MapPut("/{id}", async (UpdateProductDTO dto, IValidator < UpdateProductDTO > validator, AppDbContext db, Guid id) =>
         {
