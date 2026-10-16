@@ -19,6 +19,19 @@ function keyOf(item: StockBalance) {
   return `${item.productId}-${item.storageId}-${item.batch}`
 }
 
+// Lote de produto ou armazém excluído: aparece só para consulta do histórico, sem movimentos novos.
+function isDeleted(item: StockBalance) {
+  return item.productDeleted || item.storageDeleted
+}
+
+function DeletedBadge() {
+  return (
+    <span className="ml-1.5 inline-block rounded-full bg-line/60 px-2 py-0.5 align-middle text-xs font-medium text-ink-muted">
+      Excluído
+    </span>
+  )
+}
+
 function formatValue(item: StockBalance) {
   return (item.balance * item.productPrice).toLocaleString('pt-BR', {
     style: 'currency',
@@ -41,9 +54,13 @@ export function StockTable({ stock, canAdjust, onMovement, onHistory }: StockTab
           <div key={keyOf(item)} className="flex flex-col rounded-xl border border-line bg-cream p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-medium text-ink">{item.productName}</p>
+                <p className="font-medium text-ink">
+                  {item.productName}
+                  {item.productDeleted && <DeletedBadge />}
+                </p>
                 <p className="text-sm text-ink-muted">
                   {item.storageName}
+                  {item.storageDeleted && <DeletedBadge />}
                   <span className="block text-xs text-ink-muted/70">{item.storageAddress}</span>
                 </p>
               </div>
@@ -70,21 +87,23 @@ export function StockTable({ stock, canAdjust, onMovement, onHistory }: StockTab
               </div>
             </dl>
 
-            <div
-              className={`mt-auto grid gap-1 border-t border-line pt-3 ${
-                actions.length === 4 ? 'grid-cols-2 min-[400px]:grid-cols-4' : 'grid-cols-3'
-              }`}
-            >
-              {actions.map((action) => (
-                <button
-                  key={action.kind}
-                  onClick={() => onMovement(action.kind, item)}
-                  className="flex h-11 items-center justify-center rounded-lg text-sm font-medium text-ink-muted transition hover:bg-cream-soft hover:text-honey-dark"
-                >
-                  {action.label}
-                </button>
-              ))}
-            </div>
+            {!isDeleted(item) && (
+              <div
+                className={`mt-auto grid gap-1 border-t border-line pt-3 ${
+                  actions.length === 4 ? 'grid-cols-2 min-[400px]:grid-cols-4' : 'grid-cols-3'
+                }`}
+              >
+                {actions.map((action) => (
+                  <button
+                    key={action.kind}
+                    onClick={() => onMovement(action.kind, item)}
+                    className="flex h-11 items-center justify-center rounded-lg text-sm font-medium text-ink-muted transition hover:bg-cream-soft hover:text-honey-dark"
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -107,9 +126,13 @@ export function StockTable({ stock, canAdjust, onMovement, onHistory }: StockTab
           <tbody className="divide-y divide-line">
             {stock.map((item) => (
               <tr key={keyOf(item)}>
-                <td className="py-2 pr-3 text-ink">{item.productName}</td>
+                <td className="py-2 pr-3 text-ink">
+                  {item.productName}
+                  {item.productDeleted && <DeletedBadge />}
+                </td>
                 <td className="py-2 pr-3 text-ink-muted">
                   {item.storageName}
+                  {item.storageDeleted && <DeletedBadge />}
                   <span className="block text-xs text-ink-muted/70">{item.storageAddress}</span>
                 </td>
                 <td className="py-2 pr-3 font-mono text-ink-muted">{item.batch}</td>
@@ -121,17 +144,21 @@ export function StockTable({ stock, canAdjust, onMovement, onHistory }: StockTab
                 </td>
                 <td className="py-2 pl-3 text-right">
                   <div className="flex justify-end gap-1 whitespace-nowrap">
-                    {actions.map((action) => (
-                      <button
-                        key={action.kind}
-                        onClick={() => onMovement(action.kind, item)}
-                        aria-label={`${action.label}: ${item.productName}, lote ${item.batch}, ${item.storageName}`}
-                        className="rounded-md px-2 py-1.5 text-ink-muted transition hover:bg-cream-soft hover:text-honey-dark"
-                      >
-                        {action.label}
-                      </button>
-                    ))}
-                    <span className="mx-1 w-px self-stretch bg-line" aria-hidden="true" />
+                    {!isDeleted(item) && (
+                      <>
+                        {actions.map((action) => (
+                          <button
+                            key={action.kind}
+                            onClick={() => onMovement(action.kind, item)}
+                            aria-label={`${action.label}: ${item.productName}, lote ${item.batch}, ${item.storageName}`}
+                            className="rounded-md px-2 py-1.5 text-ink-muted transition hover:bg-cream-soft hover:text-honey-dark"
+                          >
+                            {action.label}
+                          </button>
+                        ))}
+                        <span className="mx-1 w-px self-stretch bg-line" aria-hidden="true" />
+                      </>
+                    )}
                     <button
                       onClick={() => onHistory(item)}
                       aria-label={`Histórico: ${item.productName}, lote ${item.batch}, ${item.storageName}`}

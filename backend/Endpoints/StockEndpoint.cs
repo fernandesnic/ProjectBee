@@ -13,7 +13,10 @@ public static class StockEndpointsExtensions
 
         stockApi.MapGet("/", async (AppDbContext db) =>
         {
+            // Sem IgnoreQueryFilters, o filtro de soft delete esconderia os lotes de produtos e armazéns
+            // apagados, e com eles o único caminho da tela até o histórico desses lotes.
             var responder = await db.StockBalances
+                .IgnoreQueryFilters()
                 .AsNoTracking()
                 .Select(s => new StockResponseDTO(
                     s.ProductId,
@@ -23,14 +26,16 @@ public static class StockEndpointsExtensions
                     s.Storage.Name,
                     $"{s.Storage.AddressStreet}, {s.Storage.AddressNumber} - {s.Storage.AddressCity}",
                     s.Balance,
-                    s.Batch
+                    s.Batch,
+                    s.Product.DeletedAt != null,
+                    s.Storage.DeletedAt != null
                 ))
                 .ToListAsync();
 
             return Results.Ok(responder);
         })
         .WithSummary("Lista todos os saldos de estoque")
-        .WithDescription("Retorna os saldos de todos os produtos em todos os armazéns. Disponível para Operator e Manager.");
+        .WithDescription("Retorna os saldos de todos os produtos em todos os armazéns, incluindo lotes de produtos e armazéns excluídos (marcados em ProductDeleted e StorageDeleted) para que o histórico continue acessível. Disponível para Operator e Manager.");
     }
     
 }

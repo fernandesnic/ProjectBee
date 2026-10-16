@@ -19,7 +19,8 @@ public static class MovementEndpointsExtensions
             Guid? storageId,
             string? batch) =>
         {
-            var query = db.StockMovements.AsNoTracking();
+            // O histórico é permanente: inclui movimentos de produtos e armazéns excluídos.
+            var query = db.StockMovements.IgnoreQueryFilters().AsNoTracking();
 
             if (productId.HasValue)
                 query = query.Where(m => m.ProductId == productId.Value);

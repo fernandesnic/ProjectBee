@@ -98,7 +98,7 @@ public static class StorageEndpointsExtensions
                 return Results.NotFound(new { mensagem = $"Armazem não encontrado" });
             }
 
-            // A exclusão é lógica: a linha fica no banco e o histórico de movimentos continua apontando para ela.
+            // Soft delete: a linha continua no banco, então os movimentos antigos seguem apontando para o armazém.
             if (await db.StockBalances.AnyAsync(b => b.StorageId == id && b.Balance != 0))
             {
                 return Results.Problem(
@@ -107,14 +107,17 @@ public static class StorageEndpointsExtensions
                     statusCode: StatusCodes.Status422UnprocessableEntity);
             }
 
-            Storage.DeletedAt = DateTime.UtcNow;
+            var now = DateTime.UtcNow;
+            Storage.DeletedAt = now;
+            Storage.IsActive = false;
+            Storage.UpdatedAt = now;
             await db.SaveChangesAsync();
 
             return Results.NoContent();
         })
         .RequireAuthorization(policy => policy.RequireRole(Roles.Manager))
         .WithSummary("Remove um armazém")
-        .WithDescription("Exclusão lógica: marca o armazém como apagado (DeletedAt) e mantém o histórico de movimentos. Só é permitida para armazéns sem saldo em nenhum lote; caso contrário retorna 422. Requer perfil Manager.");
+        .WithDescription("Exclusão lógica (soft delete): o armazém some das listagens, mas o histórico de movimentos é preservado. Só é permitida para armazéns sem saldo em nenhum lote; caso contrário retorna 422. Requer perfil Manager.");
 
         StoragesApi.MapPut("/{id}", async (UpdateStorageDTO dto, IValidator<UpdateStorageDTO> validator, AppDbContext db, Guid id) =>
         {

@@ -22,6 +22,13 @@ public class ProductEndpointTests : IClassFixture<ApiFactory>
         return await db.Products.AsNoTracking().AnyAsync(p => p.Id == productId);
     }
 
+    private async Task<DateTime?> DeletedAtAsync(Guid productId)
+    {
+        await using var db = _api.Database.CreateContext();
+        return await db.Products.IgnoreQueryFilters().AsNoTracking()
+            .Where(p => p.Id == productId).Select(p => p.DeletedAt).SingleAsync();
+    }
+
     private static async Task<string?> DetailAsync(HttpResponseMessage response) =>
         (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("detail").GetString();
 
@@ -41,9 +48,9 @@ public class ProductEndpointTests : IClassFixture<ApiFactory>
         Assert.True(await ExistsAsync(product.Id));
     }
 
-    // Antes desta regra, o Restrict dos movimentos fazia o banco recusar e a API devolvia 500.
+    // A exclusão é lógica, então o histórico não impede mais: a linha fica no banco para os movimentos.
     [Fact]
-    public async Task Deleting_product_with_history_but_no_stock_returns_422()
+    public async Task Deleting_product_with_history_but_no_stock_soft_deletes_it()
     {
         using var client = await _api.CreateManagerClientAsync();
         var product = await CreateProductAsync(_api.Database);
@@ -55,9 +62,19 @@ public class ProductEndpointTests : IClassFixture<ApiFactory>
 
         var response = await client.DeleteAsync($"/api/products/{product.Id}");
 
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
-        Assert.StartsWith("O produto tem histórico de movimentos", await DetailAsync(response));
-        Assert.True(await ExistsAsync(product.Id));
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.False(await ExistsAsync(product.Id));
+        Assert.NotNull(await DeletedAtAsync(product.Id));
+
+        // O lote zerado continua na tela de saldos, marcado como excluído, e o histórico vem completo.
+        var stock = await client.GetFromJsonAsync<JsonElement>("/api/stock");
+        var lot = stock.EnumerateArray().Single(s => s.GetProperty("productId").GetGuid() == product.Id);
+        Assert.True(lot.GetProperty("productDeleted").GetBoolean());
+        Assert.False(lot.GetProperty("storageDeleted").GetBoolean());
+
+        var history = await client.GetFromJsonAsync<JsonElement>(
+            $"/api/movements?productId={product.Id}&storageId={storage.Id}&batch={Batch}");
+        Assert.Equal(2, history.GetArrayLength());
     }
 
     [Fact]
@@ -70,5 +87,6 @@ public class ProductEndpointTests : IClassFixture<ApiFactory>
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.False(await ExistsAsync(product.Id));
+        Assert.NotNull(await DeletedAtAsync(product.Id));
     }
 }

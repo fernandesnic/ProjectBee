@@ -40,6 +40,13 @@ public class StorageEndpointTests : IClassFixture<ApiFactory>
         return (await db.Storages.AsNoTracking().SingleOrDefaultAsync(s => s.Id == storageId))?.IsActive;
     }
 
+    private async Task<DateTime?> DeletedAtAsync(Guid storageId)
+    {
+        await using var db = _api.Database.CreateContext();
+        return await db.Storages.IgnoreQueryFilters().AsNoTracking()
+            .Where(s => s.Id == storageId).Select(s => s.DeletedAt).SingleAsync();
+    }
+
     [Fact]
     public async Task Deactivating_storage_with_stock_returns_422_and_keeps_it_active()
     {
@@ -82,7 +89,7 @@ public class StorageEndpointTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task Deleting_storage_with_history_but_no_stock_returns_422()
+    public async Task Deleting_storage_with_history_but_no_stock_soft_deletes_it()
     {
         using var client = await _api.CreateManagerClientAsync();
         var product = await CreateProductAsync(_api.Database);
@@ -94,10 +101,9 @@ public class StorageEndpointTests : IClassFixture<ApiFactory>
 
         var response = await client.DeleteAsync($"/api/storages/{storage.Id}");
 
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.StartsWith("O armazém tem histórico de movimentos", body.GetProperty("detail").GetString());
-        Assert.NotNull(await IsActiveAsync(storage.Id));
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Null(await IsActiveAsync(storage.Id));
+        Assert.NotNull(await DeletedAtAsync(storage.Id));
     }
 
     [Fact]
@@ -110,5 +116,6 @@ public class StorageEndpointTests : IClassFixture<ApiFactory>
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Null(await IsActiveAsync(storage.Id));
+        Assert.NotNull(await DeletedAtAsync(storage.Id));
     }
 }

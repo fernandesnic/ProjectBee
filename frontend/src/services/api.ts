@@ -151,6 +151,8 @@ export interface StockBalance {
   storageAddress: string
   balance: number
   batch: string
+  productDeleted: boolean
+  storageDeleted: boolean
 }
 
 export async function getStock() {
