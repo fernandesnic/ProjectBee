@@ -7,7 +7,8 @@
 ![EF Core](https://img.shields.io/badge/EF%20Core-10-blue)
 ![React](https://img.shields.io/badge/React-TypeScript-61DAFB)
 ![Tests](https://img.shields.io/badge/tests-xUnit-5E1F87)
-![License](https://img.shields.io/badge/license-MIT-green)
+
+**🔗 [Ver demo online](https://project-bee-xi.vercel.app/)** — clique em *Entrar na demo* para acessar com o login já preenchido.
 
 ---
 
@@ -113,7 +114,7 @@ As roles são atribuídas pelo servidor, nunca escolhidas pelo próprio usuário
 
 > \* **Decisão consciente de portfólio.** Em um sistema real, `/register` ficaria restrito a `Manager`: criação de usuário passa por aprovação, não por auto-cadastro. Mantive o endpoint aberto aqui para que quem visita o projeto consiga testar o fluxo completo de autenticação sem depender da conta demo. A trava está no código, comentada, com a justificativa registrada.
 
-Um usuário demo com perfil Manager é criado no startup (`IdentitySeed`), com a senha vindo de configuração (`Demo:Password`), nunca do código-fonte.
+Um usuário demo com perfil Manager é criado no startup (`IdentitySeed`). No backend, a senha vem de configuração (`Demo:Password`), nunca do código-fonte. A credencial de demonstração é pública de propósito e aparece na tela de login, para quem visita testar sem precisar se cadastrar.
 
 ---
 
@@ -370,10 +371,11 @@ O frontend sobe em `http://localhost:5173` e aponta para `http://localhost:5054`
 - [x] Testes de serviço e de integração, incluindo concorrência
 - [x] Seed de demonstração registrando os saldos por movimento, para a prova real fechar já no primeiro boot
 - [x] Bloquear exclusão de produto com saldo ou histórico, com a mesma regra dos armazéns
+- [x] Deploy com demo pública: frontend na Vercel, API em container Docker no Azure e banco no Azure SQL
+- [x] Dockerfile da API, com build em duas etapas (SDK para compilar, runtime para rodar)
 
 **Próximo**
 - [ ] Devolver `409` também quando duas entradas simultâneas criam o mesmo lote novo
-- [ ] Deploy: Azure App Service + Azure SQL, frontend em Vercel/Netlify, demo pública
 - [ ] `GET /api/stock/summary` — agregação de valor no banco (`SUM(Price * Balance)`) em vez de somar no cliente
 - [ ] Paginação e busca nas listagens
 
@@ -394,7 +396,3 @@ O botão *Authorize* do Swagger UI não anexa o header nas requisições. A caus
 **Nicolas Fernandes**
 
 [LinkedIn](https://linkedin.com/in/fernandesnic) · [GitHub](https://github.com/fernandesnic)
-
----
-
-Distribuído sob licença MIT.
