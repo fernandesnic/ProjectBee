@@ -1,8 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
-import { API_BASE_URL, login } from '../services/api'
+import { isColdStartError, login } from '../services/api'
 import { saveToken } from '../services/token'
+
+const MAX_ATTEMPTS = 4
+const WAIT_BETWEEN_MS = 3000
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 function LoginPage() {
   const navigate = useNavigate()
@@ -15,6 +20,7 @@ function LoginPage() {
   const [password, setPassword] = useState(isDemo ? demoPassword : '')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [waking, setWaking] = useState(false)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -22,9 +28,20 @@ function LoginPage() {
     setLoading(true)
 
     try {
-      const { token } = await login({ email, password })
-      saveToken(token)
-      navigate('/app')
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+          const { token } = await login({ email, password })
+          saveToken(token)
+          navigate('/app')
+          return
+        } catch (err) {
+          const ultimaTentativa = attempt === MAX_ATTEMPTS
+          if (!isColdStartError(err) || ultimaTentativa) throw err
+
+          setWaking(true) // avisa a tela: API está acordando
+          await sleep(WAIT_BETWEEN_MS)
+        }
+      }
     } catch (err) {
       if (axios.isAxiosError(err)) {
         if (err.response?.status === 401) {
@@ -32,13 +49,14 @@ function LoginPage() {
         } else if (err.response) {
           setError(`Erro no servidor (${err.response.status}). Tente novamente.`)
         } else {
-          setError(`Não foi possível conectar à API em ${API_BASE_URL}. Ela está rodando?`)
+          setError('Não foi possível conectar ao servidor agora. Tente novamente em instantes.')
         }
       } else {
         setError('Erro inesperado. Tente novamente.')
       }
     } finally {
       setLoading(false)
+      setWaking(false)
     }
   }
 
@@ -86,6 +104,12 @@ function LoginPage() {
           </div>
 
           {error && <p className="text-sm text-danger" role="alert">{error}</p>}
+
+          {waking && (
+            <p className="text-xs text-ink-muted">
+              Acordando a API, a primeira conexão pode levar até 30 segundos...
+            </p>
+          )}
 
           <button
             type="submit"

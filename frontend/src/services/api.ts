@@ -44,8 +44,18 @@ export interface LoginResponse {
 }
 
 export async function login(payload: LoginPayload) {
-  const { data } = await api.post<LoginResponse>('/api/auth/login', payload)
+  const { data } = await api.post<LoginResponse>('/api/auth/login', payload, {
+    timeout: 15000, // sem isso o axios espera para sempre
+  })
   return data
+}
+
+// Erro típico de "API dormindo": sem resposta (rede/timeout) ou gateway 502/503/504.
+// 401 (senha errada) NÃO entra aqui: a API respondeu, então está acordada.
+export function isColdStartError(err: unknown): boolean {
+  if (!axios.isAxiosError(err)) return false
+  if (!err.response) return true
+  return [502, 503, 504].includes(err.response.status)
 }
 
 export interface Product {
@@ -222,4 +232,9 @@ export async function registerAdjustment(payload: AdjustmentPayload) {
 export async function getMovements(filter: { productId?: string; storageId?: string; batch?: string }) {
   const { data } = await api.get<Movement[]>('/api/movements', { params: filter })
   return data
+}
+
+// Acorda a API em segundo plano (cold start). Não espera resposta e ignora erro.
+export function wakeUpApi(): void {
+  fetch(`${API_BASE_URL}/health`).catch(() => {})
 }
