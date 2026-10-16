@@ -68,9 +68,9 @@ const STEPS = [
       'Defina onde cada produto pode existir e comece a rastrear por lote desde a primeira entrada.',
   },
   {
-    title: 'Registre entradas e saídas',
+    title: 'Registre entradas, saídas e transferências',
     description:
-      'Toda movimentação atualiza o saldo na hora, direto na base que o resto do sistema vai consumir.',
+      'Cada movimentação fica no histórico e atualiza o saldo na hora, direto na base que o resto do sistema vai consumir.',
   },
   {
     title: 'Acompanhe o saldo consolidado',
@@ -104,18 +104,21 @@ const MODULES = [
 ]
 
 const DONE = [
+  'Livro-razão de movimentações: entrada, saída, transferência e ajuste, com o saldo sempre igual à soma do histórico',
   'Saldo de estoque com chave composta (produto + armazém + lote)',
+  'Concorrência otimista (rowversion): duas operações no mesmo lote não se sobrescrevem',
+  'Autorização por perfil (Manager e Operator) nas rotas e na interface',
   'CRUD de produtos e armazéns',
-  'Entradas, saídas e movimentações de estoque atualizando o saldo',
   'Login e registro com Identity, token JWT com claims de role',
   'Validação assíncrona de SKU duplicado antes de gravar',
   'Erros da API padronizados em ProblemDetails (RFC 7807)',
+  '33 testes automatizados contra SQL Server real, incluindo concorrência',
 ]
 
 const NEXT = [
-  'Autorização por perfil nas rotas de escrita (hoje é só "autenticado")',
   'Módulo de faturamento consumindo o saldo do estoque',
   'Dashboard financeiro: contas a pagar/receber, fluxo de caixa',
+  'Paginação e busca nas listagens',
 ]
 
 const DECISIONS = [
@@ -135,9 +138,9 @@ const DECISIONS = [
       'Uma unique constraint garante integridade, mas devolve erro genérico. Consultar o banco antes permite responder com uma mensagem que faz sentido pra quem está cadastrando.',
   },
   {
-    title: 'Perfis de acesso já no token, antes de ter rota que os use',
+    title: 'Perfil de acesso decidido pelo servidor, não pelo usuário',
     description:
-      'O JWT carrega a role do usuário desde o primeiro módulo, mesmo sem nenhuma rota diferenciando operador de gestor ainda. A ideia é não ter que voltar na autenticação quando isso virar necessário.',
+      'No cadastro, o servidor atribui a role Operator; o usuário nunca escolhe o próprio perfil. As rotas conferem a role do token (Manager ou Operator), e a interface esconde botões só por conveniência, nunca como proteção.',
   },
 ]
 
