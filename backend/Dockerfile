@@ -6,8 +6,7 @@ COPY ProjectBee.csproj .
 RUN dotnet restore
 
 COPY . .
-RUN dotnet publish -c Release -o /app/publish --no-restore
-
+RUN dotnet publish ProjectBee.csproj -c Release -o /app/publish --no-restore
 # Etapa 2: rodar (imagem pequena, só com o runtime)
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
