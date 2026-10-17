@@ -153,6 +153,8 @@ export interface StockBalance {
   batch: string
   productDeleted: boolean
   storageDeleted: boolean
+  productActive: boolean
+  storageActive: boolean
 }
 
 export async function getStock() {

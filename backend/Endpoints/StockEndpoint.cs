@@ -28,14 +28,18 @@ public static class StockEndpointsExtensions
                     s.Balance,
                     s.Batch,
                     s.Product.DeletedAt != null,
-                    s.Storage.DeletedAt != null
+                    s.Storage.DeletedAt != null,
+                    s.Product.IsActive,
+                    s.Storage.IsActive
                 ))
                 .ToListAsync();
 
             return Results.Ok(responder);
         })
         .WithSummary("Lista todos os saldos de estoque")
-        .WithDescription("Retorna os saldos de todos os produtos em todos os armazéns, incluindo lotes de produtos e armazéns excluídos (marcados em ProductDeleted e StorageDeleted) para que o histórico continue acessível. Disponível para Operator e Manager.");
+        .WithDescription("Retorna os saldos de todos os produtos em todos os armazéns, incluindo lotes de produtos e armazéns excluídos (marcados em ProductDeleted e StorageDeleted) para que o histórico continue acessível. ProductActive e StorageActive indicam cadastros inativos, que não aceitam movimentos novos. Disponível para Operator e Manager.")
+        .Produces<List<StockResponseDTO>>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized);
     }
     
 }

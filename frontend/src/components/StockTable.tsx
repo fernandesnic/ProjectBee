@@ -19,15 +19,19 @@ function keyOf(item: StockBalance) {
   return `${item.productId}-${item.storageId}-${item.batch}`
 }
 
-// Lote de produto ou armazém excluído: aparece só para consulta do histórico, sem movimentos novos.
-function isDeleted(item: StockBalance) {
-  return item.productDeleted || item.storageDeleted
+// Lote de produto ou armazém excluído ou inativo: aparece só para consulta do histórico,
+// já que a API recusa movimentos novos nesses cadastros.
+function isLocked(item: StockBalance) {
+  return (
+    item.productDeleted || item.storageDeleted || !item.productActive || !item.storageActive
+  )
 }
 
-function DeletedBadge() {
+function RecordTag({ deleted, active }: { deleted: boolean; active: boolean }) {
+  if (!deleted && active) return null
   return (
     <span className="ml-1.5 inline-block rounded-full bg-line/60 px-2 py-0.5 align-middle text-xs font-medium text-ink-muted">
-      Excluído
+      {deleted ? 'Excluído' : 'Inativo'}
     </span>
   )
 }
@@ -56,11 +60,11 @@ export function StockTable({ stock, canAdjust, onMovement, onHistory }: StockTab
               <div className="min-w-0">
                 <p className="font-medium text-ink">
                   {item.productName}
-                  {item.productDeleted && <DeletedBadge />}
+                  <RecordTag deleted={item.productDeleted} active={item.productActive} />
                 </p>
                 <p className="text-sm text-ink-muted">
                   {item.storageName}
-                  {item.storageDeleted && <DeletedBadge />}
+                  <RecordTag deleted={item.storageDeleted} active={item.storageActive} />
                   <span className="block text-xs text-ink-muted/70">{item.storageAddress}</span>
                 </p>
               </div>
@@ -87,7 +91,7 @@ export function StockTable({ stock, canAdjust, onMovement, onHistory }: StockTab
               </div>
             </dl>
 
-            {!isDeleted(item) && (
+            {!isLocked(item) && (
               <div
                 className={`mt-auto grid gap-1 border-t border-line pt-3 ${
                   actions.length === 4 ? 'grid-cols-2 min-[400px]:grid-cols-4' : 'grid-cols-3'
@@ -128,11 +132,11 @@ export function StockTable({ stock, canAdjust, onMovement, onHistory }: StockTab
               <tr key={keyOf(item)}>
                 <td className="py-2 pr-3 text-ink">
                   {item.productName}
-                  {item.productDeleted && <DeletedBadge />}
+                  <RecordTag deleted={item.productDeleted} active={item.productActive} />
                 </td>
                 <td className="py-2 pr-3 text-ink-muted">
                   {item.storageName}
-                  {item.storageDeleted && <DeletedBadge />}
+                  <RecordTag deleted={item.storageDeleted} active={item.storageActive} />
                   <span className="block text-xs text-ink-muted/70">{item.storageAddress}</span>
                 </td>
                 <td className="py-2 pr-3 font-mono text-ink-muted">{item.batch}</td>
@@ -144,7 +148,7 @@ export function StockTable({ stock, canAdjust, onMovement, onHistory }: StockTab
                 </td>
                 <td className="py-2 pl-3 text-right">
                   <div className="flex justify-end gap-1 whitespace-nowrap">
-                    {!isDeleted(item) && (
+                    {!isLocked(item) && (
                       <>
                         {actions.map((action) => (
                           <button
