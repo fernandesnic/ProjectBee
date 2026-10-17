@@ -42,5 +42,7 @@ public class UpdateStorageDTOValidator : BaseStorageValidator<UpdateStorageDTO>
     {
         RuleFor(x => x.IsActive)
             .NotNull().WithMessage("O campo IsActive é obrigatório na atualização.");
+        RuleFor(x => x.RowVersion)
+            .NotEmpty().WithMessage("O campo RowVersion é obrigatório na atualização: envie a versão lida do armazém.");
     }
 }

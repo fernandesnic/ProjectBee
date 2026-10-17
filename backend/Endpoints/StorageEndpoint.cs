@@ -37,7 +37,7 @@ public static class StorageEndpointsExtensions
             db.Storages.Add(Storage);
             await db.SaveChangesAsync();
 
-            var responseDTO = new StorageResponseDTO(Storage.Id, Storage.Name, Storage.IdNumber, Storage.AddressNumber, Storage.AddressStreet, Storage.AddressCity, Storage.IsActive);
+            var responseDTO = ToResponse(Storage);
 
             return Results.Created($"/api/storages/{Storage.Id}", responseDTO);
         })
@@ -60,7 +60,8 @@ public static class StorageEndpointsExtensions
                     s.AddressNumber,
                     s.AddressStreet,
                     s.AddressCity,
-                    s.IsActive
+                    s.IsActive,
+                    s.RowVersion
                     ))
                 .ToListAsync();
 
@@ -83,7 +84,8 @@ public static class StorageEndpointsExtensions
                     s.AddressNumber,
                     s.AddressStreet,
                     s.AddressCity,
-                    s.IsActive
+                    s.IsActive,
+                    s.RowVersion
                     ))
                 .FirstOrDefaultAsync();
 
@@ -148,6 +150,11 @@ public static class StorageEndpointsExtensions
                 return Results.NotFound(new { mensagem = $"Armazem não encontrado" });
             }
 
+            // Concorrência otimista, como em produtos: versão velha não sobrescreve a edição de outra pessoa.
+            if (!Storage.RowVersion.SequenceEqual(dto.RowVersion!))
+                return EditConflict();
+            db.Entry(Storage).Property(s => s.RowVersion).OriginalValue = dto.RowVersion!;
+
             // Armazém inativo não pode ter saldo: o estoque precisa sair por movimento antes.
             if (Storage.IsActive && dto.IsActive == false)
             {
@@ -173,18 +180,34 @@ public static class StorageEndpointsExtensions
             Storage.IsActive = dto.IsActive!.Value;
             Storage.UpdatedAt = DateTime.UtcNow;
 
-            await db.SaveChangesAsync();
+            try
+            {
+                await db.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return EditConflict();
+            }
 
-            return Results.Ok(new { mensagem = $"Armazem atualizado com sucesso" });
+            return Results.Ok(ToResponse(Storage));
         })
         .RequireAuthorization(policy => policy.RequireRole(Roles.Manager))
         .WithSummary("Atualiza um armazém")
-        .WithDescription("O IdNumber não pode ser alterado — ele identifica o armazém. Para trocar de IdNumber, cadastre um novo armazém. O campo IsActive é obrigatório: omiti-lo retorna 400, para evitar desativação acidental. Desativar um armazém que ainda tem saldo retorna 422.")
-        .Produces(StatusCodes.Status200OK)
+        .WithDescription("O IdNumber não pode ser alterado — ele identifica o armazém. Para trocar de IdNumber, cadastre um novo armazém. O campo IsActive é obrigatório: omiti-lo retorna 400, para evitar desativação acidental. O RowVersion lido antes de editar também é obrigatório: se outra edição gravou no meio, retorna 409 e nada é alterado. Desativar um armazém que ainda tem saldo retorna 422. A resposta traz o armazém com o RowVersion novo.")
+        .Produces<StorageResponseDTO>(StatusCodes.Status200OK)
         .ProducesValidationProblem()
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status409Conflict)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
     }
+
+    private static StorageResponseDTO ToResponse(Storage s) =>
+        new(s.Id, s.Name, s.IdNumber, s.AddressNumber, s.AddressStreet, s.AddressCity, s.IsActive, s.RowVersion);
+
+    private static IResult EditConflict() => Results.Problem(
+        title: "Conflito de edição",
+        detail: "O armazém foi alterado por outra pessoa enquanto você editava. Recarregue para ver a versão atual e refaça a alteração.",
+        statusCode: StatusCodes.Status409Conflict);
 }

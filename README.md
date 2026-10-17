@@ -126,8 +126,8 @@ Os erros seguem RFC 7807 (`ProblemDetails`), e cada código tem um significado s
 
 | Código | Quando | Onde vem a explicação |
 |---|---|---|
-| `400` | O pedido está malformado (campo vazio, quantidade ≤ 0, lote fora do padrão) | `errors`, uma lista de mensagens por campo |
-| `409` | Outra operação alterou o mesmo saldo entre a leitura e a gravação | `detail` — basta consultar o saldo e tentar de novo |
+| `400` | O pedido está malformado (campo vazio, quantidade ≤ 0, lote fora do padrão) | `errors`, uma lista de mensagens por campo; se o JSON nem desserializa, `detail` |
+| `409` | Outra operação alterou o mesmo saldo, produto ou armazém entre a leitura e a gravação | `detail` — basta consultar de novo e repetir |
 | `422` | O pedido é válido, mas a regra de negócio recusa (saldo insuficiente, armazém com saldo) | `detail` |
 
 ### Movimentações
@@ -157,7 +157,7 @@ O `/api/stock` é **somente leitura**. Os antigos `POST`, `PUT` e `DELETE` grava
 | `POST` | `/api/products` | Cadastra produto | Manager | `201` `400` |
 | `GET` | `/api/products` | Lista produtos | Manager, Operator | `200` |
 | `GET` | `/api/products/{id}` | Busca por ID | Manager, Operator | `200` `404` |
-| `PUT` | `/api/products/{id}` | Atualiza produto | Manager | `200` `400` `404` |
+| `PUT` | `/api/products/{id}` | Atualiza produto (exige `rowVersion`) | Manager | `200` `400` `404` `409` |
 | `DELETE` | `/api/products/{id}` | Remove produto | Manager | `204` `404` `422` |
 
 ### Armazéns
@@ -167,7 +167,7 @@ O `/api/stock` é **somente leitura**. Os antigos `POST`, `PUT` e `DELETE` grava
 | `POST` | `/api/storages` | Cadastra armazém | Manager | `201` `400` |
 | `GET` | `/api/storages` | Lista armazéns | Manager, Operator | `200` |
 | `GET` | `/api/storages/{id}` | Busca por ID | Manager, Operator | `200` `404` |
-| `PUT` | `/api/storages/{id}` | Atualiza armazém | Manager | `200` `400` `404` `422` |
+| `PUT` | `/api/storages/{id}` | Atualiza armazém (exige `rowVersion`) | Manager | `200` `400` `404` `409` `422` |
 | `DELETE` | `/api/storages/{id}` | Remove armazém | Manager | `204` `404` `422` |
 
 > O arquivo [`ProjectBee.http`](./backend/ProjectBee.http) roda de ponta a ponta, incluindo os casos de erro: o login guarda o token e as criações guardam os IDs, então basta executar as requisições na ordem. Cada uma traz no título o status esperado.
@@ -187,6 +187,7 @@ O `/api/stock` é **somente leitura**. Os antigos `POST`, `PUT` e `DELETE` grava
 
 **Concorrência**
 - Duas operações simultâneas sobre o mesmo lote não podem se sobrescrever. Se o saldo mudou entre a leitura e a gravação, a segunda é recusada com `409` e **nada** é gravado — nem o saldo, nem o movimento
+- Duas edições do mesmo produto ou armazém também não: o `PUT` envia o `rowVersion` lido ao abrir o formulário, e quem salva com a versão velha recebe `409` em vez de apagar sem aviso a alteração do outro
 
 **Armazéns**
 - Código identificador e número do endereço são strings, não inteiros — endereços reais de galpão não cabem em `int` (`"S/N"`, `"1250-A"`)
@@ -250,7 +251,7 @@ cd ProjectBee/tests/ProjectBee.Tests
 dotnet test
 ```
 
-São 37 testes, em duas camadas:
+São 41 testes, em duas camadas:
 
 - **Serviço** (`StockMovementServiceTests`) — as regras do livro-razão chamando o `StockMovementService` direto: saldo insuficiente, transferência para o mesmo armazém, ajuste sem diferença, sinal de cada movimento, par de transferência com o mesmo `TransferId`, e a prova real depois de uma sequência mista de operações.
 - **API** (`MovementEndpointTests`, `StorageEndpointTests`, `ProductEndpointTests`, `SeedTests`) — a aplicação inteira via `WebApplicationFactory`, com autenticação de verdade: `400` com erros por campo, `422` com `detail`, `401` sem token, `403` do Operator no ajuste, bloqueios de desativação e exclusão de armazém e produto, o `/api/stock` recusando escrita, e a prova real fechando com os dados de demonstração num banco recém-criado.

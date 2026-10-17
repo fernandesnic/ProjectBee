@@ -12,6 +12,13 @@
 @storageId = {{createStorage.response.body.$.id}}
 @storageId2 = {{createStorage2.response.body.$.id}}
 
+# Os PUTs exigem o rowVersion lido antes de editar (concorrência otimista).
+# Cada PUT tem um GET logo antes, que guarda a versão atual.
+@productRowVersion = {{getProduct.response.body.$.rowVersion}}
+@storageRowVersion = {{getStorage.response.body.$.rowVersion}}
+@storageRowVersionBeforeDeactivate = {{getStorageBeforeDeactivate.response.body.$.rowVersion}}
+@storage2RowVersion = {{getStorage2.response.body.$.rowVersion}}
+
 
 ### =====================================================
 ### HEALTH CHECK
@@ -57,7 +64,8 @@ Authorization: Bearer {{token}}
 GET {{host}}/api/products
 Authorization: Bearer {{token}}
 
-### Buscar por ID -> 200
+### Buscar por ID -> 200 (guarda o rowVersion para o PUT)
+# @name getProduct
 GET {{host}}/api/products/{{productId}}
 Authorization: Bearer {{token}}
 
@@ -66,7 +74,21 @@ PUT {{host}}/api/products/{{productId}}
 Content-Type: {{contentType}}
 Authorization: Bearer {{token}}
 
-{ "name": "Mel Silvestre 1kg - Safra 2026", "desc": "Mel silvestre puro, safra 2026, pote 1kg", "price": 64.90, "isActive": true }
+{ "name": "Mel Silvestre 1kg - Safra 2026", "desc": "Mel silvestre puro, safra 2026, pote 1kg", "price": 64.90, "isActive": true, "rowVersion": "{{productRowVersion}}" }
+
+### Atualizar de novo com a mesma versão -> 409 (o PUT anterior já mudou o rowVersion)
+PUT {{host}}/api/products/{{productId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "name": "Mel Silvestre 1kg - edição atrasada", "desc": "Outra pessoa salvou antes", "price": 59.90, "isActive": true, "rowVersion": "{{productRowVersion}}" }
+
+### Preço como texto -> 400 com ProblemDetails (corpo que não desserializa)
+POST {{host}}/api/products
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "name": "Produto Inválido", "sku": "INV-002", "desc": "Preço em texto", "price": "doze reais" }
 
 ### Preço zero -> 400
 POST {{host}}/api/products
@@ -125,12 +147,17 @@ Authorization: Bearer {{token}}
 GET {{host}}/api/storages
 Authorization: Bearer {{token}}
 
-### Atualizar -> 200 (idNumber não muda; isActive é obrigatório)
+### Buscar o armazém -> 200 (guarda o rowVersion para o PUT)
+# @name getStorage
+GET {{host}}/api/storages/{{storageId}}
+Authorization: Bearer {{token}}
+
+### Atualizar -> 200 (idNumber não muda; isActive e rowVersion são obrigatórios)
 PUT {{host}}/api/storages/{{storageId}}
 Content-Type: {{contentType}}
 Authorization: Bearer {{token}}
 
-{ "name": "Galpão Campinas", "addressNumber": "1250-B", "addressStreet": "Rua das Colmeias", "addressCity": "Campinas", "isActive": true }
+{ "name": "Galpão Campinas", "addressNumber": "1250-B", "addressStreet": "Rua das Colmeias", "addressCity": "Campinas", "isActive": true, "rowVersion": "{{storageRowVersion}}" }
 
 ### Cidade vazia -> 400
 POST {{host}}/api/storages
@@ -239,12 +266,17 @@ Authorization: Bearer {{token}}
 ### REGRAS DE DESATIVAÇÃO E EXCLUSÃO
 ### =====================================================
 
+### Buscar o armazém de novo -> 200 (o PUT anterior mudou o rowVersion)
+# @name getStorageBeforeDeactivate
+GET {{host}}/api/storages/{{storageId}}
+Authorization: Bearer {{token}}
+
 ### Desativar armazém com saldo -> 422 (informa lotes e unidades que sobraram)
 PUT {{host}}/api/storages/{{storageId}}
 Content-Type: {{contentType}}
 Authorization: Bearer {{token}}
 
-{ "name": "Galpão Campinas", "addressNumber": "1250-B", "addressStreet": "Rua das Colmeias", "addressCity": "Campinas", "isActive": false }
+{ "name": "Galpão Campinas", "addressNumber": "1250-B", "addressStreet": "Rua das Colmeias", "addressCity": "Campinas", "isActive": false, "rowVersion": "{{storageRowVersionBeforeDeactivate}}" }
 
 ### Excluir armazém com saldo -> 422
 DELETE {{host}}/api/storages/{{storageId}}
@@ -265,9 +297,14 @@ Authorization: Bearer {{token}}
 DELETE {{host}}/api/storages/{{storageId2}}
 Authorization: Bearer {{token}}
 
+### Buscar o segundo armazém -> 200 (guarda o rowVersion para o PUT)
+# @name getStorage2
+GET {{host}}/api/storages/{{storageId2}}
+Authorization: Bearer {{token}}
+
 ### Desativar armazém zerado -> 200
 PUT {{host}}/api/storages/{{storageId2}}
 Content-Type: {{contentType}}
 Authorization: Bearer {{token}}
 
-{ "name": "Depósito Barueri", "addressNumber": "S/N", "addressStreet": "Avenida Industrial", "addressCity": "Barueri", "isActive": false }
+{ "name": "Depósito Barueri", "addressNumber": "S/N", "addressStreet": "Avenida Industrial", "addressCity": "Barueri", "isActive": false, "rowVersion": "{{storage2RowVersion}}" }

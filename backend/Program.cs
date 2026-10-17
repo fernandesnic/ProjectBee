@@ -70,6 +70,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>();
 
+// Sem isso, corpo inválido (JSON malformado, "price": "abc") vira 400 sem corpo fora de Development.
+// Lançando a exceção, o GlobalExceptionHandler responde com ProblemDetails, como os outros erros.
+builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 

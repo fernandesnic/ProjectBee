@@ -20,6 +20,21 @@ public class GlobalExceptionHandler : IExceptionHandler
         CancellationToken cancellationToken
     )
     {
+        if (exception is BadHttpRequestException badRequest)
+        {
+            _logger.LogInformation("Requisição malformada: {Message}", badRequest.Message);
+
+            httpContext.Response.StatusCode = badRequest.StatusCode;
+            await httpContext.Response.WriteAsJsonAsync(new ProblemDetails
+            {
+                Status = badRequest.StatusCode,
+                Title = "Requisição inválida",
+                Detail = "O corpo da requisição não pôde ser lido. Confira se o JSON está bem formado e se cada campo tem o tipo esperado (números sem aspas, datas e IDs no formato certo)."
+            }, cancellationToken);
+
+            return true;
+        }
+
         _logger.LogError(exception, "Ocorreu um erro não tratado: {Message}", exception.Message);
 
         httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;

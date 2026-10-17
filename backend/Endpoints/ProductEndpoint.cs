@@ -38,7 +38,7 @@ public static class ProductEndpointsExtensions
             db.Products.Add(product);
             await db.SaveChangesAsync();
 
-            var responseDTO = new ProductResponseDTO(product.Id, product.Name, product.SKU, product.Desc, product.Price, product.IsActive);
+            var responseDTO = ToResponse(product);
 
             return Results.Created($"/api/products/{product.Id}", responseDTO);
         })
@@ -61,7 +61,8 @@ public static class ProductEndpointsExtensions
                     p.SKU,
                     p.Desc,
                     p.Price,
-                    p.IsActive
+                    p.IsActive,
+                    p.RowVersion
                     ))
                 .ToListAsync();
 
@@ -84,7 +85,8 @@ public static class ProductEndpointsExtensions
                     p.SKU,
                     p.Desc,
                     p.Price,
-                    p.IsActive
+                    p.IsActive,
+                    p.RowVersion
                     ))
                 .FirstOrDefaultAsync();
 
@@ -152,26 +154,48 @@ public static class ProductEndpointsExtensions
         {
         return Results.NotFound(new {mensagem = $"Produto não encontrado"});
         }
-            
+
+            // Concorrência otimista: o EF compara a versão enviada no WHERE do UPDATE. A checagem
+            // antecipada evita o UPDATE quando a versão já está velha na leitura.
+            if (!product.RowVersion.SequenceEqual(dto.RowVersion!))
+                return EditConflict();
+            db.Entry(product).Property(p => p.RowVersion).OriginalValue = dto.RowVersion!;
+
                 product.Name = dto.Name;
                 product.Desc = dto.Desc;
                 product.Price = dto.Price;
                 product.IsActive = dto.IsActive!.Value;
                 product.UpdatedAt = DateTime.UtcNow;
 
-            await db.SaveChangesAsync();
+            try
+            {
+                await db.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return EditConflict();
+            }
 
-            return Results.Ok(new {mensagem = $"Produto atualizado com sucesso"});
+            return Results.Ok(ToResponse(product));
 
         })
         .RequireAuthorization(policy => policy.RequireRole(Roles.Manager))
         .WithSummary("Atualiza um produto")
-        .WithDescription("O SKU não pode ser alterado — ele identifica o produto, como um código de item. Para trocar de SKU, cadastre um novo produto. O campo IsActive é obrigatório: omiti-lo retorna 400, para evitar desativação acidental.")
-        .Produces(StatusCodes.Status200OK)
+        .WithDescription("O SKU não pode ser alterado — ele identifica o produto, como um código de item. Para trocar de SKU, cadastre um novo produto. O campo IsActive é obrigatório: omiti-lo retorna 400, para evitar desativação acidental. O RowVersion lido antes de editar também é obrigatório: se outra edição gravou no meio, retorna 409 e nada é alterado. A resposta traz o produto com o RowVersion novo.")
+        .Produces<ProductResponseDTO>(StatusCodes.Status200OK)
         .ProducesValidationProblem()
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
-        .Produces(StatusCodes.Status404NotFound);
+        .Produces(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status409Conflict);
 
     }
+
+    private static ProductResponseDTO ToResponse(Product p) =>
+        new(p.Id, p.Name, p.SKU, p.Desc, p.Price, p.IsActive, p.RowVersion);
+
+    private static IResult EditConflict() => Results.Problem(
+        title: "Conflito de edição",
+        detail: "O produto foi alterado por outra pessoa enquanto você editava. Recarregue para ver a versão atual e refaça a alteração.",
+        statusCode: StatusCodes.Status409Conflict);
 }

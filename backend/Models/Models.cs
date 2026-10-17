@@ -19,6 +19,7 @@ public class AppUser : IdentityUser
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public DateTime? DeletedAt { get; set; }
+    public byte[] RowVersion { get; set; } = null!; // controle de concorrência otimista na edição
 
 
 }
@@ -35,6 +36,7 @@ public class Storage
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public DateTime? DeletedAt { get; set; }
+    public byte[] RowVersion { get; set; } = null!; // controle de concorrência otimista na edição
 }
 
 public class StockBalance

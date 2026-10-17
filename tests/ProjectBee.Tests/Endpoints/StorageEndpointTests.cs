@@ -16,14 +16,50 @@ public class StorageEndpointTests : IClassFixture<ApiFactory>
         _api = api;
     }
 
-    private static object UpdateBody(bool isActive) => new
+    private static object UpdateBody(bool isActive, byte[] rowVersion, string name = "Armazém de teste") => new
     {
-        name = "Armazém de teste",
+        name,
         addressNumber = "100",
         addressStreet = "Rua dos Testes",
         addressCity = "São Paulo",
-        isActive
+        isActive,
+        rowVersion
     };
+
+    private async Task<byte[]> RowVersionAsync(Guid storageId)
+    {
+        await using var db = _api.Database.CreateContext();
+        return await db.Storages.AsNoTracking().Where(s => s.Id == storageId).Select(s => s.RowVersion).SingleAsync();
+    }
+
+    private async Task<string?> NameAsync(Guid storageId)
+    {
+        await using var db = _api.Database.CreateContext();
+        return await db.Storages.AsNoTracking().Where(s => s.Id == storageId).Select(s => s.Name).SingleAsync();
+    }
+
+    // Duas pessoas abrem o mesmo armazém para editar: quem salva por último está com a versão velha.
+    [Fact]
+    public async Task Editing_storage_with_stale_RowVersion_returns_409_and_keeps_first_edit()
+    {
+        using var client = await _api.CreateManagerClientAsync();
+        var storage = await CreateStorageAsync(_api.Database);
+
+        var first = await client.PutAsJsonAsync($"/api/storages/{storage.Id}",
+            UpdateBody(isActive: true, storage.RowVersion, name: "Edição da Ana"));
+        var second = await client.PutAsJsonAsync($"/api/storages/{storage.Id}",
+            UpdateBody(isActive: true, storage.RowVersion, name: "Edição do Beto"));
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
+        Assert.Equal("Edição da Ana", await NameAsync(storage.Id));
+
+        // A resposta do PUT traz a versão nova: com ela, a próxima edição passa.
+        var newVersion = (await first.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("rowVersion").GetBytesFromBase64();
+        var third = await client.PutAsJsonAsync($"/api/storages/{storage.Id}",
+            UpdateBody(isActive: true, newVersion, name: "Edição do Beto"));
+        Assert.Equal(HttpStatusCode.OK, third.StatusCode);
+    }
 
     private async Task<Guid> CreateStorageWithStockAsync(HttpClient client, int quantity)
     {
@@ -53,7 +89,7 @@ public class StorageEndpointTests : IClassFixture<ApiFactory>
         using var client = await _api.CreateManagerClientAsync();
         var storageId = await CreateStorageWithStockAsync(client, 12);
 
-        var response = await client.PutAsJsonAsync($"/api/storages/{storageId}", UpdateBody(isActive: false));
+        var response = await client.PutAsJsonAsync($"/api/storages/{storageId}", UpdateBody(isActive: false, await RowVersionAsync(storageId)));
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -67,7 +103,7 @@ public class StorageEndpointTests : IClassFixture<ApiFactory>
         using var client = await _api.CreateManagerClientAsync();
         var storage = await CreateStorageAsync(_api.Database);
 
-        var response = await client.PutAsJsonAsync($"/api/storages/{storage.Id}", UpdateBody(isActive: false));
+        var response = await client.PutAsJsonAsync($"/api/storages/{storage.Id}", UpdateBody(isActive: false, storage.RowVersion));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.False(await IsActiveAsync(storage.Id));

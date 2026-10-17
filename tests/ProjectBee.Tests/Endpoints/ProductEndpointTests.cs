@@ -90,6 +90,52 @@ public class ProductEndpointTests : IClassFixture<ApiFactory>
         Assert.NotNull(await DeletedAtAsync(product.Id));
     }
 
+    private static object UpdateBody(string name, byte[]? rowVersion) =>
+        new { name, desc = "Editado pelos testes", price = 15m, isActive = true, rowVersion };
+
+    [Fact]
+    public async Task Editing_product_with_stale_RowVersion_returns_409_and_keeps_first_edit()
+    {
+        using var client = await _api.CreateManagerClientAsync();
+        var product = await CreateProductAsync(_api.Database);
+
+        var first = await client.PutAsJsonAsync($"/api/products/{product.Id}", UpdateBody("Edição da Ana", product.RowVersion));
+        var second = await client.PutAsJsonAsync($"/api/products/{product.Id}", UpdateBody("Edição do Beto", product.RowVersion));
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
+        Assert.StartsWith("O produto foi alterado por outra pessoa", await DetailAsync(second));
+
+        await using var db = _api.Database.CreateContext();
+        Assert.Equal("Edição da Ana", await db.Products.Where(p => p.Id == product.Id).Select(p => p.Name).SingleAsync());
+    }
+
+    [Fact]
+    public async Task Editing_product_without_RowVersion_returns_400()
+    {
+        using var client = await _api.CreateManagerClientAsync();
+        var product = await CreateProductAsync(_api.Database);
+
+        var response = await client.PutAsJsonAsync($"/api/products/{product.Id}", UpdateBody("Sem versão", null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    // Antes, corpo que não desserializa (preço como texto) voltava 400 sem corpo nenhum.
+    [Fact]
+    public async Task Malformed_body_returns_400_with_problem_details()
+    {
+        using var client = await _api.CreateManagerClientAsync();
+
+        var response = await client.PostAsync("/api/products", new StringContent(
+            """{ "name": "Produto", "sku": "ABC-123", "desc": "x", "price": "doze reais" }""",
+            System.Text.Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Requisição inválida", body.GetProperty("title").GetString());
+    }
+
     // Sem IgnoreQueryFilters na validação, o SKU do excluído passava e o índice único do banco devolvia 500.
     [Fact]
     public async Task Creating_product_with_SKU_of_deleted_product_returns_400()

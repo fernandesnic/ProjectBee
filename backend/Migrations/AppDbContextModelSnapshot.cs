@@ -251,6 +251,12 @@ namespace ProjectBee.Migrations
                         .HasPrecision(14, 2)
                         .HasColumnType("decimal(14,2)");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.Property<string>("SKU")
                         .IsRequired()
                         .HasMaxLength(15)
@@ -378,6 +384,12 @@ namespace ProjectBee.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
