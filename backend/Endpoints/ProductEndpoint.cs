@@ -44,7 +44,11 @@ public static class ProductEndpointsExtensions
         })
         .RequireAuthorization(policy => policy.RequireRole(Roles.Manager))
         .WithSummary("Cadastra um produto")
-        .WithDescription("O SKU deve seguir o padrão A-Z, dígitos e hífen, de 3 a 15 caracteres, e é validado contra o banco antes de gravar. Requer perfil Manager.");
+        .WithDescription("O SKU deve seguir o padrão A-Z, dígitos e hífen, de 3 a 15 caracteres, e é validado contra o banco antes de gravar. O SKU de um produto excluído continua reservado. Requer perfil Manager.")
+        .Produces<ProductResponseDTO>(StatusCodes.Status201Created)
+        .ProducesValidationProblem()
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden);
 
 
         productsApi.MapGet("/", async (AppDbContext db) =>
@@ -65,7 +69,9 @@ public static class ProductEndpointsExtensions
 
         })
         .WithSummary("Lista todos os produtos")
-        .WithDescription("Retorna produtos ativos e inativos. Disponível para Operator e Manager.");
+        .WithDescription("Retorna produtos ativos e inativos. Disponível para Operator e Manager.")
+        .Produces<List<ProductResponseDTO>>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized);
 
         productsApi.MapGet("/{id}", async (AppDbContext db, Guid id) =>
         {
@@ -90,7 +96,10 @@ public static class ProductEndpointsExtensions
             return Results.Ok(responder);
 
         })
-        .WithSummary("Busca um produto por ID");
+        .WithSummary("Busca um produto por ID")
+        .Produces<ProductResponseDTO>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status404NotFound);
 
         productsApi.MapDelete("/{id}", async (AppDbContext db, Guid id) =>
         {
@@ -122,7 +131,12 @@ public static class ProductEndpointsExtensions
         })
         .RequireAuthorization(policy => policy.RequireRole(Roles.Manager))
         .WithSummary("Remove um produto")
-        .WithDescription("Exclusão lógica (soft delete): o produto some das listagens, mas o histórico de movimentos é preservado. Só é permitida para produtos sem saldo; caso contrário retorna 422. Requer perfil Manager.");
+        .WithDescription("Exclusão lógica (soft delete): o produto some das listagens, mas o histórico de movimentos é preservado. Só é permitida para produtos sem saldo; caso contrário retorna 422. Requer perfil Manager.")
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         productsApi.MapPut("/{id}", async (UpdateProductDTO dto, IValidator < UpdateProductDTO > validator, AppDbContext db, Guid id) =>
         {
@@ -152,7 +166,12 @@ public static class ProductEndpointsExtensions
         })
         .RequireAuthorization(policy => policy.RequireRole(Roles.Manager))
         .WithSummary("Atualiza um produto")
-        .WithDescription("O SKU não pode ser alterado — ele identifica o produto, como um código de item. Para trocar de SKU, cadastre um novo produto. O campo IsActive é obrigatório: omiti-lo retorna 400, para evitar desativação acidental.");
+        .WithDescription("O SKU não pode ser alterado — ele identifica o produto, como um código de item. Para trocar de SKU, cadastre um novo produto. O campo IsActive é obrigatório: omiti-lo retorna 400, para evitar desativação acidental.")
+        .Produces(StatusCodes.Status200OK)
+        .ProducesValidationProblem()
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
 
     }
 }

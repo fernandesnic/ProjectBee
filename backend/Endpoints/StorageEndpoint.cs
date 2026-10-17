@@ -43,7 +43,11 @@ public static class StorageEndpointsExtensions
         })
         .RequireAuthorization(policy => policy.RequireRole(Roles.Manager))
         .WithSummary("Cadastra um armazém")
-        .WithDescription("O IdNumber deve ter no mínimo 3 caracteres. Requer perfil Manager.");
+        .WithDescription("O IdNumber deve ter de 3 a 20 caracteres e ser único, inclusive entre armazéns excluídos. Requer perfil Manager.")
+        .Produces<StorageResponseDTO>(StatusCodes.Status201Created)
+        .ProducesValidationProblem()
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden);
 
         StoragesApi.MapGet("/", async (AppDbContext db) =>
         {
@@ -63,7 +67,9 @@ public static class StorageEndpointsExtensions
             return Results.Ok(responder);
         })
         .WithSummary("Lista todos os armazéns")
-        .WithDescription("Retorna armazéns ativos e inativos. Disponível para Operator e Manager.");
+        .WithDescription("Retorna armazéns ativos e inativos. Disponível para Operator e Manager.")
+        .Produces<List<StorageResponseDTO>>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized);
 
         StoragesApi.MapGet("/{id}", async (AppDbContext db, Guid id) =>
         {
@@ -88,7 +94,10 @@ public static class StorageEndpointsExtensions
 
             return Results.Ok(responder);
         })
-        .WithSummary("Busca um armazém por ID");
+        .WithSummary("Busca um armazém por ID")
+        .Produces<StorageResponseDTO>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status404NotFound);
 
         StoragesApi.MapDelete("/{id}", async (AppDbContext db, Guid id) =>
         {
@@ -117,7 +126,12 @@ public static class StorageEndpointsExtensions
         })
         .RequireAuthorization(policy => policy.RequireRole(Roles.Manager))
         .WithSummary("Remove um armazém")
-        .WithDescription("Exclusão lógica (soft delete): o armazém some das listagens, mas o histórico de movimentos é preservado. Só é permitida para armazéns sem saldo em nenhum lote; caso contrário retorna 422. Requer perfil Manager.");
+        .WithDescription("Exclusão lógica (soft delete): o armazém some das listagens, mas o histórico de movimentos é preservado. Só é permitida para armazéns sem saldo em nenhum lote; caso contrário retorna 422. Requer perfil Manager.")
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         StoragesApi.MapPut("/{id}", async (UpdateStorageDTO dto, IValidator<UpdateStorageDTO> validator, AppDbContext db, Guid id) =>
         {
@@ -165,6 +179,12 @@ public static class StorageEndpointsExtensions
         })
         .RequireAuthorization(policy => policy.RequireRole(Roles.Manager))
         .WithSummary("Atualiza um armazém")
-        .WithDescription("O IdNumber não pode ser alterado — ele identifica o armazém. Para trocar de IdNumber, cadastre um novo armazém. O campo IsActive é obrigatório: omiti-lo retorna 400, para evitar desativação acidental. Desativar um armazém que ainda tem saldo retorna 422.");
+        .WithDescription("O IdNumber não pode ser alterado — ele identifica o armazém. Para trocar de IdNumber, cadastre um novo armazém. O campo IsActive é obrigatório: omiti-lo retorna 400, para evitar desativação acidental. Desativar um armazém que ainda tem saldo retorna 422.")
+        .Produces(StatusCodes.Status200OK)
+        .ProducesValidationProblem()
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
     }
 }
