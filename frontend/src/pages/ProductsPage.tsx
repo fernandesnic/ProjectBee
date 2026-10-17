@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
 import { useOutletContext } from 'react-router-dom'
 import { deleteProduct, getProducts, getStock, type Product, type StockBalance } from '../services/api'
@@ -18,6 +18,15 @@ function ProductsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [formMode, setFormMode] = useState<FormMode>({ type: 'closed' })
+  const newButtonRef = useRef<HTMLButtonElement>(null)
+  const formWasOpen = useRef(false)
+
+  // O botão "Novo" some enquanto o formulário está aberto; ao fechar, o foco volta para ele
+  // em vez de cair no body e o teclado ter que recomeçar do topo da página.
+  useEffect(() => {
+    if (formMode.type === 'closed' && formWasOpen.current) newButtonRef.current?.focus()
+    formWasOpen.current = formMode.type !== 'closed'
+  }, [formMode.type])
   const [pendingDelete, setPendingDelete] = useState<Product | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -95,6 +104,7 @@ function ProductsPage() {
         <h1 className="text-2xl font-bold tracking-tight text-ink">Produtos</h1>
        {canManage && formMode.type === 'closed' && (
           <button
+            ref={newButtonRef}
             onClick={() => setFormMode({ type: 'create' })}
             className="rounded-full bg-honey px-5 py-2 text-sm font-semibold text-hive transition hover:bg-honey-light"
           >

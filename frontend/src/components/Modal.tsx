@@ -16,6 +16,8 @@ export function Modal({ open, title, subtitle, busy = false, onClose, children }
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
 
+  // Foco e rolagem só dependem de abrir e fechar. Se dependessem de `busy`, cada envio do
+  // formulário devolveria o foco para fora e de volta para o primeiro campo.
   useEffect(() => {
     if (!open) return
     const previous = document.activeElement as HTMLElement | null
@@ -23,6 +25,15 @@ export function Modal({ open, title, subtitle, busy = false, onClose, children }
 
     const originalOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = originalOverflow
+      previous?.focus()
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
 
     function handleKeyDown(event: KeyboardEvent) {
       if (busy) return
@@ -50,11 +61,7 @@ export function Modal({ open, title, subtitle, busy = false, onClose, children }
     }
 
     document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = originalOverflow
-      previous?.focus()
-    }
+    return () => document.removeEventListener('keydown', handleKeyDown)
   }, [open, busy, onClose])
 
   if (!open) return null

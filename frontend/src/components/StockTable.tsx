@@ -1,4 +1,4 @@
-import type { StockBalance } from '../services/api'
+import { stockKey as keyOf, type StockBalance } from '../services/api'
 import type { MovementKind } from './MovementForm'
 
 interface StockTableProps {
@@ -14,10 +14,6 @@ const ACTIONS: { kind: MovementKind; label: string; managerOnly?: boolean }[] = 
   { kind: 'transfer', label: 'Transferir' },
   { kind: 'adjustment', label: 'Ajustar', managerOnly: true },
 ]
-
-function keyOf(item: StockBalance) {
-  return `${item.productId}-${item.storageId}-${item.batch}`
-}
 
 // Lote de produto ou armazém excluído ou inativo: aparece só para consulta do histórico,
 // já que a API recusa movimentos novos nesses cadastros.

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { getStock, type MovementResult, type StockBalance } from '../services/api'
+import { getStock, stockKey as keyOf, type MovementResult, type StockBalance } from '../services/api'
 import { StockTable } from '../components/StockTable'
 import { MovementForm, type MovementKind } from '../components/MovementForm'
 import { MovementHistory } from '../components/MovementHistory'
@@ -12,6 +12,29 @@ type Dialog =
   | { type: 'closed' }
   | { type: 'movement'; kind: MovementKind; item?: StockBalance }
   | { type: 'history'; item: StockBalance }
+
+// Maior valor primeiro; empates (como lotes zerados) por produto, armazém e lote.
+function byValue(a: StockBalance, b: StockBalance) {
+  return (
+    b.balance * b.productPrice - a.balance * a.productPrice ||
+    a.productName.localeCompare(b.productName, 'pt-BR') ||
+    a.storageName.localeCompare(b.storageName, 'pt-BR') ||
+    a.batch.localeCompare(b.batch, 'pt-BR')
+  )
+}
+
+// A ordem por valor vale para o primeiro carregamento. Depois de um movimento, reordenar faria
+// o lote mexido pular de lugar (e o foco junto), então os lotes mantêm a posição e os novos
+// entram no topo, onde quem acabou de criar vai procurar.
+function mergeOrder(current: string[], loaded: StockBalance[]) {
+  const loadedKeys = new Set(loaded.map(keyOf))
+  if (current.length === 0) return [...loaded].sort(byValue).map(keyOf)
+
+  const kept = current.filter((key) => loadedKeys.has(key))
+  const keptKeys = new Set(kept)
+  const added = loaded.filter((item) => !keptKeys.has(keyOf(item))).sort(byValue).map(keyOf)
+  return [...added, ...kept]
+}
 
 const TITLE: Record<MovementKind, string> = {
   entry: 'Entrada',
@@ -25,6 +48,7 @@ function StockPage() {
   const canAdjust = roles.includes('Manager')
 
   const [stock, setStock] = useState<StockBalance[]>([])
+  const [order, setOrder] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [dialog, setDialog] = useState<Dialog>({ type: 'closed' })
@@ -33,7 +57,10 @@ function StockPage() {
 
   const loadStock = useCallback(() => {
     return getStock()
-      .then(setStock)
+      .then((loaded) => {
+        setStock(loaded)
+        setOrder((current) => mergeOrder(current, loaded))
+      })
       .catch(() => setError('Não foi possível carregar os saldos.'))
       .finally(() => setLoading(false))
   }, [])
@@ -55,14 +82,10 @@ function StockPage() {
   const totalUnits = stock.reduce((sum, item) => sum + item.balance, 0)
   const totalValue = stock.reduce((sum, item) => sum + item.balance * item.productPrice, 0)
 
-  // Maior valor primeiro; empates (como lotes zerados) por produto, armazém e lote, para a ordem não mudar a cada recarga.
-  const sortedStock = [...stock].sort(
-    (a, b) =>
-      b.balance * b.productPrice - a.balance * a.productPrice ||
-      a.productName.localeCompare(b.productName, 'pt-BR') ||
-      a.storageName.localeCompare(b.storageName, 'pt-BR') ||
-      a.batch.localeCompare(b.batch, 'pt-BR'),
-  )
+  const stockByKey = new Map(stock.map((item) => [keyOf(item), item]))
+  const sortedStock = order
+    .map((key) => stockByKey.get(key))
+    .filter((item): item is StockBalance => item !== undefined)
 
   const dialogItem = dialog.type === 'closed' ? undefined : dialog.item
 

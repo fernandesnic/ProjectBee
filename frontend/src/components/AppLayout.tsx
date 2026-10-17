@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { clearToken, decodeToken, getValidToken } from '../services/token'
+import {
+  clearToken,
+  decodeToken,
+  getValidToken,
+  onTokenRemovedInOtherTab,
+} from '../services/token'
 
 export interface AppLayoutContext {
   email?: string
@@ -83,6 +88,12 @@ function AppLayout() {
     setLastPathname(location.pathname)
     setMobileNavOpen(false)
   }
+
+  // Saiu em outra aba: esta também sai, em vez de seguir na tela até o primeiro 401.
+  useEffect(
+    () => onTokenRemovedInOtherTab(() => navigate('/login', { replace: true })),
+    [navigate],
+  )
 
   useEffect(() => {
     if (!mobileNavOpen) return

@@ -4,6 +4,16 @@ export const saveToken = (token: string) => localStorage.setItem(TOKEN_KEY, toke
 export const getToken = () => localStorage.getItem(TOKEN_KEY)
 export const clearToken = () => localStorage.removeItem(TOKEN_KEY)
 
+// O evento "storage" só dispara nas outras abas: é como uma aba fica sabendo que a outra saiu.
+export function onTokenRemovedInOtherTab(callback: () => void): () => void {
+  function handleStorage(event: StorageEvent) {
+    if (event.key === TOKEN_KEY && event.newValue === null) callback()
+    if (event.key === null) callback() // localStorage.clear()
+  }
+  window.addEventListener('storage', handleStorage)
+  return () => window.removeEventListener('storage', handleStorage)
+}
+
 const ROLE_CLAIM = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'
 
 export interface DecodedToken {

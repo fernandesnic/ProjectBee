@@ -8,6 +8,7 @@ import { useEffect } from 'react'
 import { setNavigator } from './services/navigation'
 import StoragesPage from './pages/StoragesPage'
 import StockPage from './pages/StockPage'
+import NotFoundPage from './pages/NotFoundPage'
 
 function NavigatorSetup() {
   const navigate = useNavigate()
@@ -32,6 +33,7 @@ function App() {
           <Route path="storages" element={<StoragesPage />} />
           <Route path="stock" element={<StockPage />} />
         </Route>
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   )
