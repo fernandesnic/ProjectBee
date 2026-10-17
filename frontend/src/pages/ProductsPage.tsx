@@ -65,10 +65,14 @@ function ProductsPage() {
         : [...current, saved]
     })
     setFormMode({ type: 'closed' })
+    setError(null)
     setToast(isEditing ? 'Produto atualizado com sucesso.' : 'Produto cadastrado com sucesso.')
   }
 
-  const productIdsWithStock = new Set(stock.map((item) => item.productId))
+  // Lote zerado continua na lista de saldos (por causa do histórico), então só conta quem tem saldo de fato.
+  const productIdsWithStock = new Set(
+    stock.filter((item) => item.balance > 0).map((item) => item.productId),
+  )
   const withoutStockCount = products.filter(
     (product) => product.isActive && !productIdsWithStock.has(product.id),
   ).length
@@ -140,7 +144,7 @@ function ProductsPage() {
           <p className="text-sm text-ink-muted">Carregando produtos...</p>
         ) : (
           <ProductTable
-            products={products}
+            products={[...products].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))}
             valueByProduct={valueByProduct}
             balanceByProduct={balanceByProduct}
             onEdit={canManage ? (product) => setFormMode({ type: 'edit', product }) : undefined}
@@ -154,7 +158,7 @@ function ProductsPage() {
         title="Remover produto"
         description={
           pendingDelete
-            ? `Tem certeza que deseja remover "${pendingDelete.name}"? Os saldos de estoque vinculados a ele também serão removidos.`
+            ? `Tem certeza que deseja remover "${pendingDelete.name}"? Ele sai das listagens, mas o histórico de movimentações é mantido.`
             : undefined
         }
         busy={deleting}

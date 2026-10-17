@@ -72,6 +72,7 @@ function StoragesPage() {
         : [...current, saved]
     })
     setFormMode({ type: 'closed' })
+    setError(null)
     setToast(isEditing ? 'Armazém atualizado com sucesso.' : 'Armazém cadastrado com sucesso.')
   }
 
@@ -142,7 +143,7 @@ function StoragesPage() {
           <p className="text-sm text-ink-muted">Carregando armazéns...</p>
         ) : (
           <StorageTable
-            storages={storages}
+            storages={[...storages].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))}
             valueByStorage={valueByStorage}
             onEdit={canManage ? (storage) => setFormMode({ type: 'edit', storage }) : undefined}
             onDelete={
@@ -159,7 +160,7 @@ function StoragesPage() {
         title="Remover armazém"
         description={
           pendingDelete
-            ? `Tem certeza que deseja remover "${pendingDelete.name}"? Os saldos de estoque vinculados a ele também serão removidos.`
+            ? `Tem certeza que deseja remover "${pendingDelete.name}"? Ele sai das listagens, mas o histórico de movimentações é mantido.`
             : undefined
         }
         busy={deleting}

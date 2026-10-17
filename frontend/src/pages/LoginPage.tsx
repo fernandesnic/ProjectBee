@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import { isColdStartError, login } from '../services/api'
-import { saveToken } from '../services/token'
+import { getValidToken, saveToken } from '../services/token'
 
 const MAX_ATTEMPTS = 4
 const WAIT_BETWEEN_MS = 3000
@@ -34,7 +34,7 @@ function LoginPage() {
         try {
           const { token } = await login({ email, password })
           saveToken(token)
-          navigate('/app')
+          navigate('/app', { replace: true })
           return
         } catch (err) {
           const ultimaTentativa = attempt === MAX_ATTEMPTS
@@ -61,6 +61,12 @@ function LoginPage() {
       setLoading(false)
       setWaking(false)
     }
+  }
+
+  // Já logado: o formulário não tem o que fazer aqui. Durante o envio o token acabou de ser salvo
+  // e o próprio handleSubmit navega, então a checagem fica de fora.
+  if (!loading && getValidToken()) {
+    return <Navigate to="/app" replace />
   }
 
   return (

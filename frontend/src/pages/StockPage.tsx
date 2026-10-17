@@ -55,8 +55,13 @@ function StockPage() {
   const totalUnits = stock.reduce((sum, item) => sum + item.balance, 0)
   const totalValue = stock.reduce((sum, item) => sum + item.balance * item.productPrice, 0)
 
+  // Maior valor primeiro; empates (como lotes zerados) por produto, armazém e lote, para a ordem não mudar a cada recarga.
   const sortedStock = [...stock].sort(
-    (a, b) => b.balance * b.productPrice - a.balance * a.productPrice,
+    (a, b) =>
+      b.balance * b.productPrice - a.balance * a.productPrice ||
+      a.productName.localeCompare(b.productName, 'pt-BR') ||
+      a.storageName.localeCompare(b.storageName, 'pt-BR') ||
+      a.batch.localeCompare(b.batch, 'pt-BR'),
   )
 
   const dialogItem = dialog.type === 'closed' ? undefined : dialog.item
@@ -73,7 +78,7 @@ function StockPage() {
         </button>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4">
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 sm:gap-4">
         <div className="rounded-2xl border border-line bg-cream-soft p-4 sm:p-6">
           <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
             Unidades em estoque
@@ -86,7 +91,7 @@ function StockPage() {
           <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
             Valor total em estoque
           </p>
-          <p className="mt-2 break-words text-xl font-bold tabular-nums text-ink sm:text-2xl">
+          <p className="mt-2 whitespace-nowrap text-xl font-bold tabular-nums text-ink sm:text-2xl">
             {loading
               ? '—'
               : totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}

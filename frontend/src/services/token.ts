@@ -9,6 +9,7 @@ const ROLE_CLAIM = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role
 export interface DecodedToken {
   email?: string
   roles: string[]
+  expiresAt?: number // epoch em ms
 }
 
 export function decodeToken(token: string): DecodedToken {
@@ -19,9 +20,24 @@ export function decodeToken(token: string): DecodedToken {
 
     const roleClaim = claims[ROLE_CLAIM]
     const roles: string[] = Array.isArray(roleClaim) ? roleClaim : roleClaim ? [roleClaim] : []
+    const expiresAt = typeof claims.exp === 'number' ? claims.exp * 1000 : undefined
 
-    return { email: claims.email as string | undefined, roles }
+    return { email: claims.email as string | undefined, roles, expiresAt }
   } catch {
     return { email: undefined, roles: [] }
   }
+}
+
+// Token guardado e ainda dentro da validade. Um token vencido é apagado aqui mesmo,
+// para a tela não abrir como logada e só descobrir no primeiro 401.
+export function getValidToken(): string | null {
+  const token = getToken()
+  if (!token) return null
+
+  const { expiresAt } = decodeToken(token)
+  if (expiresAt !== undefined && expiresAt <= Date.now()) {
+    clearToken()
+    return null
+  }
+  return token
 }

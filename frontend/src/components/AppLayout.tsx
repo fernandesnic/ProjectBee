@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { clearToken, decodeToken, getToken } from '../services/token'
+import { clearToken, decodeToken, getValidToken } from '../services/token'
 
 export interface AppLayoutContext {
   email?: string
@@ -68,7 +68,7 @@ function MenuIcon({ open }: { open: boolean }) {
 function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const token = getToken()
+  const token = getValidToken()
 
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
     const activeGroup = NAV_GROUPS.find((group) =>
@@ -113,7 +113,8 @@ function AppLayout() {
 
   function handleLogout() {
     clearToken()
-    navigate('/')
+    // replace: o botão Voltar não deve reabrir a tela de onde o usuário saiu.
+    navigate('/login', { replace: true })
   }
 
   return (

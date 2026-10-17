@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { getProducts, getStock, type Product, type StockBalance } from '../services/api'
+import { getStock, type StockBalance } from '../services/api'
 
 const COLORS = {
   ink: '#1c1712',
@@ -159,26 +159,27 @@ function DashboardPage() {
   const [categoryKey, setCategoryKey] = useState<DashboardCategory['key']>('geral')
   const activeCategory = CATEGORIES.find((category) => category.key === categoryKey) ?? CATEGORIES[0]
 
-  const [products, setProducts] = useState<Product[]>([])
   const [stock, setStock] = useState<StockBalance[]>([])
   const [loadingProducts, setLoadingProducts] = useState(true)
   const [productsError, setProductsError] = useState<string | null>(null)
 
   useEffect(() => {
-    Promise.all([getProducts(), getStock()])
-      .then(([loadedProducts, loadedStock]) => {
-        setProducts(loadedProducts)
-        setStock(loadedStock)
-      })
+    getStock()
+      .then(setStock)
       .catch(() => setProductsError('Não foi possível carregar os dados de produtos.'))
       .finally(() => setLoadingProducts(false))
   }, [])
 
-  const productById = new Map(products.map((product) => [product.id, product]))
+  // Lotes zerados ficam na lista de saldos por causa do histórico, mas não têm o que mostrar no gráfico.
+  const stockWithValue = stock.filter((item) => item.balance * item.productPrice > 0)
 
+  // O nome vem do saldo, não da lista de produtos: produto excluído some de /api/products,
+  // mas o valor dele ainda está no estoque.
+  const productNameById = new Map<string, string>()
   const valueByProduct = new Map<string, number>()
   const balanceByProduct = new Map<string, number>()
-  for (const item of stock) {
+  for (const item of stockWithValue) {
+    productNameById.set(item.productId, item.productName)
     valueByProduct.set(
       item.productId,
       (valueByProduct.get(item.productId) ?? 0) + item.balance * item.productPrice,
@@ -191,7 +192,7 @@ function DashboardPage() {
 
   const productPoints: ProductChartPoint[] = [...valueByProduct.keys()].map((productId) => ({
     productId,
-    name: productById.get(productId)?.name ?? 'Produto removido',
+    name: productNameById.get(productId) ?? 'Produto removido',
     balance: balanceByProduct.get(productId) ?? 0,
     value: valueByProduct.get(productId) ?? 0,
   }))
@@ -200,7 +201,7 @@ function DashboardPage() {
 
   const valueByStorage = new Map<string, number>()
   const storageNameById = new Map<string, string>()
-  for (const item of stock) {
+  for (const item of stockWithValue) {
     valueByStorage.set(
       item.storageId,
       (valueByStorage.get(item.storageId) ?? 0) + item.balance * item.productPrice,
@@ -217,13 +218,14 @@ function DashboardPage() {
     }))
     .sort((a, b) => b.value - a.value)
 
+  // As cores vão para os produtos de maior valor; o resto entra em "Outros".
   const colorSlotByProductId = new Map<string, string>()
-  products.slice(0, MAX_PRODUCT_SLOTS).forEach((product, index) => {
-    colorSlotByProductId.set(product.id, CATEGORICAL[index])
+  stockValueRanking.slice(0, MAX_PRODUCT_SLOTS).forEach((point, index) => {
+    colorSlotByProductId.set(point.productId, CATEGORICAL[index])
   })
 
   const storageRows = new Map<string, Record<string, number | string>>()
-  for (const item of stock) {
+  for (const item of stockWithValue) {
     const seriesKey = colorSlotByProductId.has(item.productId) ? item.productName : 'Outros'
     if (!storageRows.has(item.storageId)) {
       storageRows.set(item.storageId, { storageId: item.storageId, storageName: item.storageName })
@@ -232,12 +234,15 @@ function DashboardPage() {
     const current = typeof row[seriesKey] === 'number' ? (row[seriesKey] as number) : 0
     row[seriesKey] = current + item.balance * item.productPrice
   }
-  const storageStackData = [...storageRows.values()]
+  const storageStackData = [...storageRows.values()].sort(
+    (a, b) =>
+      (valueByStorage.get(b.storageId as string) ?? 0) -
+      (valueByStorage.get(a.storageId as string) ?? 0),
+  )
 
-  const stackSeries = products
-    .filter((product) => colorSlotByProductId.has(product.id))
-    .map((product) => ({ key: product.name, color: colorSlotByProductId.get(product.id)! }))
-    .filter((series) => storageStackData.some((row) => typeof row[series.key] === 'number'))
+  const stackSeries = stockValueRanking
+    .filter((point) => colorSlotByProductId.has(point.productId))
+    .map((point) => ({ key: point.name, color: colorSlotByProductId.get(point.productId)! }))
 
   if (storageStackData.some((row) => typeof row.Outros === 'number')) {
     stackSeries.push({ key: 'Outros', color: OUTROS_COLOR })
