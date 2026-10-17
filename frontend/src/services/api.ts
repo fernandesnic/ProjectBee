@@ -65,6 +65,7 @@ export interface Product {
   desc: string
   price: number
   isActive: boolean
+  rowVersion: string // base64; volta no PUT para a API detectar edição concorrente
 }
 
 export interface CreateProductPayload {
@@ -75,6 +76,7 @@ export interface CreateProductPayload {
 }
 
 export interface UpdateProductPayload {
+  rowVersion: string
   name: string
   desc: string
   price: number
@@ -92,7 +94,8 @@ export async function createProduct(payload: CreateProductPayload) {
 }
 
 export async function updateProduct(id: string, payload: UpdateProductPayload) {
-  await api.put(`/api/products/${id}`, payload)
+  const { data } = await api.put<Product>(`/api/products/${id}`, payload)
+  return data
 }
 
 export async function deleteProduct(id: string) {
@@ -107,6 +110,7 @@ export interface Storage {
   addressStreet: string
   addressCity: string
   isActive: boolean
+  rowVersion: string // base64; volta no PUT para a API detectar edição concorrente
 }
 
 interface StorageFields {
@@ -121,6 +125,7 @@ export interface CreateStoragePayload extends StorageFields {
 }
 
 export interface UpdateStoragePayload extends StorageFields {
+  rowVersion: string
   isActive: boolean
 }
 
@@ -135,7 +140,8 @@ export async function createStorage(payload: CreateStoragePayload) {
 }
 
 export async function updateStorage(id: string, payload: UpdateStoragePayload) {
-  await api.put(`/api/storages/${id}`, payload)
+  const { data } = await api.put<Storage>(`/api/storages/${id}`, payload)
+  return data
 }
 
 export async function deleteStorage(id: string) {
@@ -155,6 +161,11 @@ export interface StockBalance {
   storageDeleted: boolean
   productActive: boolean
   storageActive: boolean
+}
+
+// Um saldo é identificado pela chave composta da API: produto + armazém + lote.
+export function stockKey(item: StockBalance) {
+  return `${item.productId}-${item.storageId}-${item.batch}`
 }
 
 export async function getStock() {
@@ -241,4 +252,20 @@ export async function getMovements(filter: { productId?: string; storageId?: str
 // Acorda a API em segundo plano (cold start). Não espera resposta e ignora erro.
 export function wakeUpApi(): void {
   fetch(`${API_BASE_URL}/health`).catch(() => {})
+}
+
+// Erros de formulário a partir da resposta da API: os de campo (400 de validação) quando existem,
+// senão o "detail" do ProblemDetails (400 de corpo inválido, 409 de edição concorrente, 422 de regra),
+// e por último a mensagem genérica. Assim nenhum erro termina com a tela calada.
+export function formErrorsFrom(err: unknown, fallback: string): Record<string, string[]> {
+  if (axios.isAxiosError(err) && err.response) {
+    const { status, data } = err.response
+    if (status === 400 && data?.errors && Object.keys(data.errors).length > 0) {
+      return data.errors
+    }
+    if ([400, 409, 422].includes(status) && typeof data?.detail === 'string') {
+      return { geral: [data.detail] }
+    }
+  }
+  return { geral: [fallback] }
 }

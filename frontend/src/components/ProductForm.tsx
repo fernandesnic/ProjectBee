@@ -1,11 +1,30 @@
 import { useState, type FormEvent } from 'react'
-import axios from 'axios'
 import {
   createProduct,
+  formErrorsFrom,
   updateProduct,
   type CreateProductPayload,
   type Product,
 } from '../services/api'
+
+const WITH_THOUSANDS = /^\d{1,3}(\.\d{3})+(,\d{1,2})?$/ // 1.234 ou 1.234,56
+const PLAIN = /^\d+([.,]\d{1,2})?$/ // 1234, 12,50 ou 12.50
+
+// Aceita "12,50", "12.50", "1234,56" e "1.234,56". Fora isso, devolve null.
+function parsePrice(text: string): number | null {
+  const trimmed = text.trim()
+  if (WITH_THOUSANDS.test(trimmed)) {
+    return Number(trimmed.replace(/\./g, '').replace(',', '.'))
+  }
+  if (PLAIN.test(trimmed)) {
+    return Number(trimmed.replace(',', '.'))
+  }
+  return null
+}
+
+function formatPriceInput(price: number) {
+  return price.toFixed(2).replace('.', ',')
+}
 interface ProductFormProps {
   product?: Product              // ausente = criação | presente = edição
   onSaved: (product: Product) => void
@@ -26,7 +45,7 @@ export function ProductForm({ product, onSaved, onCancel }: ProductFormProps) {
   })
 
   const [priceText, setPriceText] = useState(
-    product ? String(product.price).replace('.', ',') : ''
+    product ? formatPriceInput(product.price) : ''
   )
 
   const [errors, setErrors] = useState<Record<string, string[]>>({})
@@ -35,29 +54,31 @@ export function ProductForm({ product, onSaved, onCancel }: ProductFormProps) {
     async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setErrors({})
+
+    // Preço ilegível viraria NaN, que o JSON manda como null e a API recusa sem dizer o campo.
+    const price = parsePrice(priceText)
+    if (price === null) {
+      setErrors({ Price: ['Informe o preço com até 2 casas decimais, por exemplo 12,50.'] })
+      return
+    }
+
     setSubmitting(true)
-
-    const price = Number(priceText.replace(',', '.'))
-
     try {
       if (product) {
-        await updateProduct(product.id, {
+        const updated = await updateProduct(product.id, {
           name: form.name,
           desc: form.desc,
           price,
           isActive: form.isActive,
+          rowVersion: product.rowVersion,
         })
-        onSaved({ ...product, ...form, price })
+        onSaved(updated)
       } else {
         const created = await createProduct({ ...form, price })
         onSaved(created)
       }
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 400) {
-        setErrors(err.response.data?.errors ?? {})
-      } else {
-        setErrors({ geral: ['Não foi possível salvar o produto.'] })
-      }
+      setErrors(formErrorsFrom(err, 'Não foi possível salvar o produto.'))
     } finally {
       setSubmitting(false)
     }
@@ -82,6 +103,7 @@ export function ProductForm({ product, onSaved, onCancel }: ProductFormProps) {
         <input
           id="name"
           required
+          autoFocus
           value={form.name}
           onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
           className="mt-1 w-full rounded-lg border border-line bg-cream px-3 py-2 text-sm text-ink outline-none transition focus:border-honey-dark"

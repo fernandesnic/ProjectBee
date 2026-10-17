@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import axios from 'axios'
-import { createStorage, updateStorage, type Storage } from '../services/api'
+import { createStorage, formErrorsFrom, updateStorage, type Storage } from '../services/api'
 
 interface StorageFormProps {
   storage?: Storage              // ausente = criação | presente = edição
@@ -39,14 +38,15 @@ export function StorageForm({ storage, onSaved, onCancel }: StorageFormProps) {
 
     try {
       if (storage) {
-        await updateStorage(storage.id, {
+        const updated = await updateStorage(storage.id, {
           name: form.name,
           addressStreet: form.addressStreet,
           addressNumber: form.addressNumber,
           addressCity: form.addressCity,
           isActive: form.isActive,
+          rowVersion: storage.rowVersion,
         })
-        onSaved({ ...storage, ...form })
+        onSaved(updated)
       } else {
         const created = await createStorage({
           name: form.name,
@@ -58,13 +58,7 @@ export function StorageForm({ storage, onSaved, onCancel }: StorageFormProps) {
         onSaved(created)
       }
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 400) {
-        setErrors(err.response.data?.errors ?? {})
-      } else if (axios.isAxiosError(err) && err.response?.status === 422) {
-        setErrors({ geral: [err.response.data?.detail ?? 'O armazém não pode ser desativado.'] })
-      } else {
-        setErrors({ geral: ['Não foi possível salvar o armazém.'] })
-      }
+      setErrors(formErrorsFrom(err, 'Não foi possível salvar o armazém.'))
     } finally {
       setSubmitting(false)
     }
@@ -92,6 +86,7 @@ export function StorageForm({ storage, onSaved, onCancel }: StorageFormProps) {
         <input
           id="name"
           required
+          autoFocus
           value={form.name}
           onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
           className={inputClass}
