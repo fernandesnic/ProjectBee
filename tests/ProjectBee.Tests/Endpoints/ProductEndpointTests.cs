@@ -89,4 +89,27 @@ public class ProductEndpointTests : IClassFixture<ApiFactory>
         Assert.False(await ExistsAsync(product.Id));
         Assert.NotNull(await DeletedAtAsync(product.Id));
     }
+
+    // Sem IgnoreQueryFilters na validação, o SKU do excluído passava e o índice único do banco devolvia 500.
+    [Fact]
+    public async Task Creating_product_with_SKU_of_deleted_product_returns_400()
+    {
+        using var client = await _api.CreateManagerClientAsync();
+        var deleted = await CreateProductAsync(_api.Database);
+        (await client.DeleteAsync($"/api/products/{deleted.Id}")).EnsureSuccessStatusCode();
+
+        var response = await client.PostAsJsonAsync("/api/products", new
+        {
+            name = "Produto novo",
+            sku = deleted.SKU,
+            desc = "Mesmo SKU do excluído",
+            price = 12.5m
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var errors = (await response.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("errors").GetProperty("SKU")
+            .EnumerateArray().Select(e => e.GetString()).ToArray();
+        Assert.Contains("Já existe um produto com o SKU informado, ativo ou excluído.", errors);
+    }
 }

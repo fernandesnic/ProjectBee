@@ -14,7 +14,7 @@ public static class TestData
         var product = new Product
         {
             Name = "Produto de teste",
-            SKU = $"T{Guid.NewGuid():N}"[..15],
+            SKU = $"T{Guid.NewGuid():N}"[..15].ToUpperInvariant(),
             Desc = "Criado pelos testes",
             Price = 10m,
             IsActive = true,

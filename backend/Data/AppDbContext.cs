@@ -26,6 +26,9 @@ public class AppDbContext : IdentityDbContext<AppUser>
     modelBuilder.Entity<Product>().Property(x => x.SKU).HasMaxLength(15);
     modelBuilder.Entity<Product>().HasIndex(x => x.SKU).IsUnique();
 
+    modelBuilder.Entity<Storage>().Property(x => x.IdNumber).HasMaxLength(20);
+    modelBuilder.Entity<Storage>().HasIndex(x => x.IdNumber).IsUnique();
+
     modelBuilder.Entity<Product>().HasQueryFilter(p => p.DeletedAt == null);
     modelBuilder.Entity<Storage>().HasQueryFilter(s => s.DeletedAt == null);
 

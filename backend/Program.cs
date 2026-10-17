@@ -74,6 +74,8 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 builder.Services.AddValidatorsFromAssemblyContaining<CreateProductDTOValidator>();
+// Mensagens padrão do FluentValidation em português, para qualquer regra sem WithMessage.
+ValidatorOptions.Global.LanguageManager.Culture = new System.Globalization.CultureInfo("pt-BR");
 
 builder.Services.AddAuthorization();
 

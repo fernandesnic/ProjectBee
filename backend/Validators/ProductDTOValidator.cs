@@ -9,12 +9,10 @@ public abstract class BaseProductValidator<T> : AbstractValidator<T> where T : I
     public BaseProductValidator()
     {
         RuleFor(x => x.Name)
-            .NotEmpty()
-            .MinimumLength(3)
-            .WithMessage("Nome deve ter pelo menos 3 caracteres."); 
+            .NotEmpty().WithMessage("O nome é obrigatório.")
+            .MinimumLength(3).WithMessage("O nome deve ter pelo menos 3 caracteres.");
         RuleFor(x => x.Price)
-            .GreaterThan(0)
-            .WithMessage("Preço deve ser maior que 0");
+            .GreaterThan(0).WithMessage("O preço deve ser maior que zero.");
     }
 }
 public class CreateProductDTOValidator : BaseProductValidator<CreateProductDTO>
@@ -25,15 +23,14 @@ public class CreateProductDTOValidator : BaseProductValidator<CreateProductDTO>
         _db = db;
 
         RuleFor(x => x.SKU)
-            .NotEmpty()
+            .NotEmpty().WithMessage("O SKU é obrigatório.")
             .Matches(@"^[A-Z0-9-]{3,15}$")
-            .WithMessage("O SKU deve conter apenas letras maiúsculas, números e traços, entre 3 a 15 caracteres.")
-            .MustAsync(async (sku, cancellation) =>
-            {
-                bool exists = await _db.Products.AnyAsync(p => p.SKU == sku);
-                return !exists;
-            })
-            .WithMessage("Já existe produto com SKU infomrado.");
+            .WithMessage("O SKU deve conter apenas letras maiúsculas, números e traços, entre 3 e 15 caracteres.")
+            // IgnoreQueryFilters: o SKU de um produto excluído continua reservado. Sem isso, a validação
+            // passaria e o índice único do banco recusaria o INSERT com erro 500.
+            .MustAsync(async (sku, ct) =>
+                !await _db.Products.IgnoreQueryFilters().AnyAsync(p => p.SKU == sku, ct))
+            .WithMessage("Já existe um produto com o SKU informado, ativo ou excluído.");
     }
 }
 
@@ -42,6 +39,6 @@ public class UpdateProductDTOValidator : BaseProductValidator<UpdateProductDTO>
     public UpdateProductDTOValidator()
     {
         RuleFor(x => x.IsActive)
-            .NotNull().WithMessage("IsActive é obrigatório na atualização.");
+            .NotNull().WithMessage("O campo IsActive é obrigatório na atualização.");
     }
 }

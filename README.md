@@ -191,6 +191,7 @@ O `/api/stock` é **somente leitura**. Os antigos `POST`, `PUT` e `DELETE` grava
 **Armazéns**
 - Código identificador e número do endereço são strings, não inteiros — endereços reais de galpão não cabem em `int` (`"S/N"`, `"1250-A"`)
 - Rua, cidade e número obrigatórios
+- `IdNumber` único (3 a 20 caracteres): validado na aplicação **e** garantido por índice único no banco, inclusive contra armazéns excluídos
 - `IdNumber` é imutável: não faz parte do contrato de atualização, mesma decisão aplicada ao SKU
 - `IsActive` é obrigatório na atualização (`bool?` + `NotNull`), pela mesma razão de Produtos
 - **Armazém inativo não tem saldo.** Desativar um armazém que ainda tem estoque é recusado com `422`, informando quantos lotes e unidades sobraram — o estoque precisa sair por transferência ou ajuste antes
@@ -199,7 +200,7 @@ O `/api/stock` é **somente leitura**. Os antigos `POST`, `PUT` e `DELETE` grava
 **Produtos**
 - Preço maior que zero, nome com no mínimo 3 caracteres
 - SKU no padrão `^[A-Z0-9-]{3,15}$` — apenas maiúsculas, dígitos e hífen
-- SKU único: validado na aplicação **e** garantido por índice único no banco
+- SKU único: validado na aplicação **e** garantido por índice único no banco. O SKU de um produto excluído continua reservado, para o histórico não ficar ambíguo
 - SKU é imutável: não faz parte do contrato de atualização
 - `IsActive` é obrigatório na atualização (`bool?` no DTO + `NotNull` no validator): omitir o campo desativaria o produto silenciosamente, já que o default de `bool` é `false`
 - Excluir produto com saldo é recusado com `422`. Com saldo zerado mas com histórico, também — a mesma regra dos armazéns. Nesse caso, o caminho é desativar
@@ -249,7 +250,7 @@ cd ProjectBee/tests/ProjectBee.Tests
 dotnet test
 ```
 
-São 33 testes, em duas camadas:
+São 37 testes, em duas camadas:
 
 - **Serviço** (`StockMovementServiceTests`) — as regras do livro-razão chamando o `StockMovementService` direto: saldo insuficiente, transferência para o mesmo armazém, ajuste sem diferença, sinal de cada movimento, par de transferência com o mesmo `TransferId`, e a prova real depois de uma sequência mista de operações.
 - **API** (`MovementEndpointTests`, `StorageEndpointTests`, `ProductEndpointTests`, `SeedTests`) — a aplicação inteira via `WebApplicationFactory`, com autenticação de verdade: `400` com erros por campo, `422` com `detail`, `401` sem token, `403` do Operator no ajuste, bloqueios de desativação e exclusão de armazém e produto, o `/api/stock` recusando escrita, e a prova real fechando com os dados de demonstração num banco recém-criado.

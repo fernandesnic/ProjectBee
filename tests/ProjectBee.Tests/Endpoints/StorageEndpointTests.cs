@@ -118,4 +118,69 @@ public class StorageEndpointTests : IClassFixture<ApiFactory>
         Assert.Null(await IsActiveAsync(storage.Id));
         Assert.NotNull(await DeletedAtAsync(storage.Id));
     }
+
+    private static object CreateBody(string idNumber) => new
+    {
+        idNumber,
+        name = "Armazém de teste",
+        addressNumber = "100",
+        addressStreet = "Rua dos Testes",
+        addressCity = "São Paulo"
+    };
+
+    private static async Task<string[]> FieldErrorsAsync(HttpResponseMessage response, string field) =>
+        FieldErrors(await response.Content.ReadFromJsonAsync<JsonElement>(), field);
+
+    private static string[] FieldErrors(JsonElement body, string field) =>
+        body.GetProperty("errors").GetProperty(field)
+            .EnumerateArray().Select(e => e.GetString()!).ToArray();
+
+    [Fact]
+    public async Task Creating_storage_with_repeated_IdNumber_returns_400()
+    {
+        using var client = await _api.CreateManagerClientAsync();
+        var existing = await CreateStorageAsync(_api.Database);
+
+        var response = await client.PostAsJsonAsync("/api/storages", CreateBody(existing.IdNumber));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("Já existe um armazém com o código informado.", await FieldErrorsAsync(response, "IdNumber"));
+    }
+
+    // O código de um armazém excluído continua reservado: o histórico dele ainda aparece com esse código.
+    [Fact]
+    public async Task Creating_storage_with_IdNumber_of_deleted_storage_returns_400()
+    {
+        using var client = await _api.CreateManagerClientAsync();
+        var deleted = await CreateStorageAsync(_api.Database);
+        (await client.DeleteAsync($"/api/storages/{deleted.Id}")).EnsureSuccessStatusCode();
+
+        var response = await client.PostAsJsonAsync("/api/storages", CreateBody(deleted.IdNumber));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("Já existe um armazém com o código informado.", await FieldErrorsAsync(response, "IdNumber"));
+    }
+
+    [Fact]
+    public async Task Creating_storage_with_empty_fields_returns_messages_in_portuguese()
+    {
+        using var client = await _api.CreateManagerClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/storages", new
+        {
+            idNumber = "",
+            name = "",
+            addressNumber = "",
+            addressStreet = "",
+            addressCity = ""
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains("A rua é obrigatória.", FieldErrors(body, "AddressStreet"));
+        Assert.Contains("A cidade é obrigatória.", FieldErrors(body, "AddressCity"));
+        Assert.Contains("O número do endereço é obrigatório.", FieldErrors(body, "AddressNumber"));
+        Assert.Contains("O nome é obrigatório.", FieldErrors(body, "Name"));
+        Assert.Contains("O código do armazém é obrigatório.", FieldErrors(body, "IdNumber"));
+    }
 }

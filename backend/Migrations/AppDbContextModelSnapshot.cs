@@ -369,7 +369,8 @@ namespace ProjectBee.Migrations
 
                     b.Property<string>("IdNumber")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -382,6 +383,9 @@ namespace ProjectBee.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IdNumber")
+                        .IsUnique();
 
                     b.ToTable("Storages");
                 });
