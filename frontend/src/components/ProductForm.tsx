@@ -25,6 +25,10 @@ export function ProductForm({ product, onSaved, onCancel }: ProductFormProps) {
     isActive: product?.isActive ?? true,
   })
 
+  const [priceText, setPriceText] = useState(
+    product ? String(product.price).replace('.', ',') : ''
+  )
+
   const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [submitting, setSubmitting] = useState(false)
 
@@ -33,17 +37,19 @@ export function ProductForm({ product, onSaved, onCancel }: ProductFormProps) {
     setErrors({})
     setSubmitting(true)
 
+    const price = Number(priceText.replace(',', '.'))
+
     try {
       if (product) {
         await updateProduct(product.id, {
           name: form.name,
           desc: form.desc,
-          price: form.price,
+          price,
           isActive: form.isActive,
         })
-        onSaved({ ...product, ...form })
+        onSaved({ ...product, ...form, price })
       } else {
-        const created = await createProduct(form)
+        const created = await createProduct({ ...form, price })
         onSaved(created)
       }
     } catch (err) {
@@ -123,14 +129,12 @@ export function ProductForm({ product, onSaved, onCancel }: ProductFormProps) {
         </label>
         <input
           id="price"
-          type="number"
-          step="0.01"
-          min="0"
+          type="text"
+          inputMode="decimal"
+          placeholder="0,00"
           required
-          value={form.price}
-          onChange={(event) =>
-            setForm((current) => ({ ...current, price: Number(event.target.value) }))
-          }
+          value={priceText}
+          onChange={(event) => setPriceText(event.target.value)}
           className="mt-1 w-full rounded-lg border border-line bg-cream px-3 py-2 text-sm text-ink outline-none transition focus:border-honey-dark"
         />
         {fieldErrors('Price')}
