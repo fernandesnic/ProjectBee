@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getMovements, type Movement, type MovementType, type StockBalance } from '../services/api'
+import { formatDateTime } from '../services/date'
 
 const TYPE_LABEL: Record<MovementType, string> = {
   Entry: 'Entrada',
@@ -8,13 +9,6 @@ const TYPE_LABEL: Record<MovementType, string> = {
   TransferIn: 'Transferência recebida',
   Adjustment: 'Ajuste',
   OpeningBalance: 'Saldo inicial',
-}
-
-const dateFormat = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
-
-// O banco grava em UTC, mas a data chega sem fuso; sem o "Z" o navegador leria como hora local.
-function parseUtc(value: string) {
-  return new Date(/Z|[+-]\d{2}:\d{2}$/.test(value) ? value : `${value}Z`)
 }
 
 interface MovementHistoryProps {
@@ -50,7 +44,7 @@ export function MovementHistory({ item }: MovementHistoryProps) {
           <div className="min-w-0">
             <p className="text-sm font-medium text-ink">{TYPE_LABEL[movement.type] ?? movement.type}</p>
             <p className="text-xs text-ink-muted">
-              {dateFormat.format(parseUtc(movement.createdAt))}
+              {formatDateTime(movement.createdAt)}
               <span aria-hidden="true"> · </span>
               <span className="break-all">{movement.createdBy}</span>
             </p>
