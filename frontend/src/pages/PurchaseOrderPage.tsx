@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import axios from 'axios'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import {
   formatDocument,
   getPurchaseOrder,
@@ -13,10 +13,15 @@ import { formatCurrency } from '../services/price'
 import { PurchaseStatusBadge } from '../components/StatusBadge'
 import { PurchaseReceiptList } from '../components/PurchaseReceiptList'
 import { ReceiptForm } from '../components/ReceiptForm'
+import { CancelPurchaseForm } from '../components/CancelPurchaseForm'
+import { Modal } from '../components/Modal'
+import type { AppLayoutContext } from '../components/AppLayout'
 import { Toast } from '../components/Toast'
 
 function PurchaseOrderPage() {
   const { id = '' } = useParams()
+  const { roles } = useOutletContext<AppLayoutContext>()
+  const canManage = roles.includes('Manager')
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -53,6 +58,9 @@ function PurchaseOrderPage() {
   }, [loadOrder])
 
   const [receiving, setReceiving] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelBusy, setCancelBusy] = useState(false)
+  const closeCancel = useCallback(() => setCancelling(false), [])
   const receiveButtonRef = useRef<HTMLButtonElement>(null)
   const receivingWasOpen = useRef(false)
 
@@ -76,9 +84,17 @@ function PurchaseOrderPage() {
     )
   }
 
+  function handleCancelled(updated: PurchaseOrderDetail) {
+    setOrder(updated)
+    setCancelling(false)
+    setError(null)
+    setToast(`Pedido ${purchaseOrderCode(updated.number)} cancelado.`)
+  }
+
   // Outra pessoa recebeu ou cancelou no meio: a tela velha é descartada e o pedido é relido.
   function handleConflict(message: string) {
     setReceiving(false)
+    setCancelling(false)
     setError(message)
     loadOrder()
   }
@@ -119,6 +135,14 @@ function PurchaseOrderPage() {
             >
               Registrar recebimento
             </button>
+            {canManage && (
+              <button
+                onClick={() => setCancelling(true)}
+                className="h-11 flex-1 rounded-full border border-line px-5 text-sm font-medium text-danger transition hover:border-danger hover:bg-danger/10 sm:h-auto sm:flex-none sm:py-2"
+              >
+                {order.status === 'Partial' ? 'Cancelar pendente' : 'Cancelar pedido'}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -234,6 +258,29 @@ function PurchaseOrderPage() {
           <PurchaseReceiptList receipts={order.receipts} />
         </div>
       </section>
+
+      <Modal
+        open={cancelling}
+        title={order.status === 'Partial' ? 'Cancelar pendente' : 'Cancelar pedido'}
+        subtitle={
+          <>
+            <span className="font-mono font-medium text-ink">{purchaseOrderCode(order.number)}</span> ·{' '}
+            {order.supplierName}
+          </>
+        }
+        busy={cancelBusy}
+        onClose={closeCancel}
+      >
+        {cancelling && (
+          <CancelPurchaseForm
+            order={order}
+            onDone={handleCancelled}
+            onCancel={closeCancel}
+            onConflict={handleConflict}
+            onBusyChange={setCancelBusy}
+          />
+        )}
+      </Modal>
 
       <Toast message={toast} onDismiss={dismissToast} />
     </div>
