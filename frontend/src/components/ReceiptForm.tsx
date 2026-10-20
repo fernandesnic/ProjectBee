@@ -13,6 +13,7 @@ interface ReceiptFormProps {
   onDone: (order: PurchaseOrderDetail) => void
   onCancel: () => void
   onConflict: (message: string) => void // o pedido mudou desde a leitura: a página recarrega
+  onBusyChange?: (busy: boolean) => void
 }
 
 interface Row {
@@ -24,10 +25,11 @@ interface Row {
 
 type Errors = Record<string, string[]>
 
+// Mesmo visual do MovementForm: text-base no celular evita o zoom do iOS ao focar o campo.
 const inputClass =
-  'mt-1 w-full rounded-lg border border-line bg-cream px-3 py-2 text-sm text-ink outline-none transition focus:border-honey-dark'
+  'mt-1 w-full rounded-lg border border-line bg-cream px-3 py-2.5 text-base text-ink outline-none transition focus:border-honey-dark sm:text-sm'
 
-export function ReceiptForm({ order, onDone, onCancel, onConflict }: ReceiptFormProps) {
+export function ReceiptForm({ order, onDone, onCancel, onConflict, onBusyChange }: ReceiptFormProps) {
   const pendingItems = order.items.filter((item) => item.receivedQuantity < item.quantity)
   const itemsById = new Map(order.items.map((item) => [item.id, item]))
 
@@ -44,6 +46,11 @@ export function ReceiptForm({ order, onDone, onCancel, onConflict }: ReceiptForm
   )
   const [errors, setErrors] = useState<Errors>({})
   const [submitting, setSubmitting] = useState(false)
+
+  function setBusy(busy: boolean) {
+    setSubmitting(busy)
+    onBusyChange?.(busy)
+  }
 
   function updateRow(itemId: string, changes: Partial<Row>) {
     setRows((current) => current.map((row) => (row.itemId === itemId ? { ...row, ...changes } : row)))
@@ -77,7 +84,7 @@ export function ReceiptForm({ order, onDone, onCancel, onConflict }: ReceiptForm
       return
     }
 
-    setSubmitting(true)
+    setBusy(true)
     try {
       const updated = await receivePurchaseOrder(order.id, {
         invoiceNumber: invoiceNumber.trim(),
@@ -90,10 +97,10 @@ export function ReceiptForm({ order, onDone, onCancel, onConflict }: ReceiptForm
           unitPrice: parsePrice(row.price)!,
         })),
       })
-      setSubmitting(false)
+      setBusy(false)
       onDone(updated)
     } catch (err) {
-      setSubmitting(false)
+      setBusy(false)
       if (axios.isAxiosError(err) && err.response?.status === 409) {
         onConflict(err.response.data?.detail ?? 'O pedido foi alterado por outra operação. Confira o pendente atualizado.')
         return
@@ -111,14 +118,13 @@ export function ReceiptForm({ order, onDone, onCancel, onConflict }: ReceiptForm
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4">
-      <div className="sm:max-w-xs">
+      <div>
         <label htmlFor="rc-invoice" className="text-sm font-medium text-ink-muted">
           Número da nota fiscal
         </label>
         <input
           id="rc-invoice"
           required
-          autoFocus
           maxLength={20}
           value={invoiceNumber}
           onChange={(event) => setInvoiceNumber(event.target.value)}
@@ -229,21 +235,21 @@ export function ReceiptForm({ order, onDone, onCancel, onConflict }: ReceiptForm
       ) : null}
       <FieldError messages={errors.Items} />
 
-      <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-full bg-honey px-6 py-2 text-sm font-semibold text-hive transition hover:bg-honey-light disabled:opacity-60"
-        >
-          {submitting ? 'Registrando...' : 'Registrar recebimento'}
-        </button>
+      <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
         <button
           type="button"
           onClick={onCancel}
           disabled={submitting}
-          className="text-sm text-ink-muted transition hover:text-ink disabled:opacity-60"
+          className="h-11 rounded-full px-5 text-sm font-medium text-ink-muted transition hover:text-ink disabled:opacity-60 sm:h-auto sm:py-2"
         >
           Cancelar
+        </button>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="h-11 rounded-full bg-honey px-6 text-sm font-semibold text-hive transition hover:bg-honey-light disabled:opacity-60 sm:h-auto sm:py-2"
+        >
+          {submitting ? 'Registrando...' : 'Registrar recebimento'}
         </button>
       </div>
     </form>

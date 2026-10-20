@@ -23,8 +23,8 @@ export function PurchaseOrderTable({ orders }: PurchaseOrderTableProps) {
 
   return (
     <>
-      {/* Mobile: um card por pedido, o card inteiro abre o detalhe */}
-      <div className="flex flex-col gap-3 sm:hidden">
+      {/* Celular e tablet: cartões, um por pedido; o cartão inteiro abre o detalhe */}
+      <div className="grid gap-3 sm:grid-cols-2 xl:hidden">
         {orders.map((order) => (
           <Link
             key={order.id}
@@ -57,8 +57,8 @@ export function PurchaseOrderTable({ orders }: PurchaseOrderTableProps) {
         ))}
       </div>
 
-      {/* Desktop/tablet: dense table */}
-      <div className="hidden overflow-x-auto sm:block">
+      {/* Desktop: tabela densa */}
+      <div className="hidden overflow-x-auto xl:block">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-line text-ink-muted">

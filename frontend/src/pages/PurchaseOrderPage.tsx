@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import axios from 'axios'
 import { Link, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import {
@@ -9,7 +9,7 @@ import {
   type PurchaseOrderDetail,
 } from '../services/api'
 import { formatDateTime } from '../services/date'
-import { formatCurrency } from '../services/price'
+import { PurchaseOrderItems } from '../components/PurchaseOrderItems'
 import { PurchaseStatusBadge } from '../components/StatusBadge'
 import { PurchaseReceiptList } from '../components/PurchaseReceiptList'
 import { ReceiptForm } from '../components/ReceiptForm'
@@ -57,18 +57,14 @@ function PurchaseOrderPage() {
     loadOrder()
   }, [loadOrder])
 
+  // Recebimento e cancelamento abrem no Modal, como os movimentos de estoque: painel inferior
+  // no celular, e o foco volta sozinho para o botão que abriu.
   const [receiving, setReceiving] = useState(false)
+  const [receiveBusy, setReceiveBusy] = useState(false)
+  const closeReceiving = useCallback(() => setReceiving(false), [])
   const [cancelling, setCancelling] = useState(false)
   const [cancelBusy, setCancelBusy] = useState(false)
   const closeCancel = useCallback(() => setCancelling(false), [])
-  const receiveButtonRef = useRef<HTMLButtonElement>(null)
-  const receivingWasOpen = useRef(false)
-
-  // O botão some enquanto o formulário está aberto; ao fechar, o foco volta para ele.
-  useEffect(() => {
-    if (!receiving && receivingWasOpen.current) receiveButtonRef.current?.focus()
-    receivingWasOpen.current = receiving
-  }, [receiving])
 
   const dismissToast = useCallback(() => setToast(null), [])
 
@@ -113,32 +109,32 @@ function PurchaseOrderPage() {
       </div>
     )
 
-  const total = order.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
-
   return (
     <div>
-      <Link to="/app/purchases" className="text-sm text-ink-muted transition hover:text-ink">
+      <Link
+        to="/app/purchases"
+        className="-ml-1 inline-flex h-11 items-center px-1 text-sm text-ink-muted transition hover:text-ink sm:h-auto"
+      >
         ← Pedidos de compra
       </Link>
 
-      <div className="mt-3 flex flex-wrap items-center gap-3">
+      <div className="mt-1 flex flex-wrap items-center gap-3 sm:mt-3">
         <h1 className="font-mono text-2xl font-bold tracking-tight text-ink">
           {purchaseOrderCode(order.number)}
         </h1>
         <PurchaseStatusBadge status={order.status} />
-        {isPending(order.status) && !receiving && (
-          <div className="flex w-full gap-2 sm:ml-auto sm:w-auto">
+        {isPending(order.status) && (
+          <div className="grid w-full gap-2 min-[400px]:grid-cols-2 sm:ml-auto sm:flex sm:w-auto">
             <button
-              ref={receiveButtonRef}
               onClick={() => setReceiving(true)}
-              className="h-11 flex-1 rounded-full bg-honey px-5 text-sm font-semibold text-hive transition hover:bg-honey-light sm:h-auto sm:flex-none sm:py-2"
+              className="h-11 rounded-full bg-honey px-5 text-sm font-semibold text-hive transition hover:bg-honey-light sm:h-auto sm:py-2"
             >
               Registrar recebimento
             </button>
             {canManage && (
               <button
                 onClick={() => setCancelling(true)}
-                className="h-11 flex-1 rounded-full border border-line px-5 text-sm font-medium text-danger transition hover:border-danger hover:bg-danger/10 sm:h-auto sm:flex-none sm:py-2"
+                className="h-11 rounded-full border border-line px-5 text-sm font-medium text-danger transition hover:border-danger hover:bg-danger/10 sm:h-auto sm:py-2"
               >
                 {order.status === 'Partial' ? 'Cancelar pendente' : 'Cancelar pedido'}
               </button>
@@ -146,18 +142,6 @@ function PurchaseOrderPage() {
           </div>
         )}
       </div>
-
-      {receiving && (
-        <div className="mt-6 rounded-2xl border border-line bg-cream-soft p-4 sm:p-6">
-          <h2 className="mb-4 text-sm font-semibold text-ink">Recebimento de nota</h2>
-          <ReceiptForm
-            order={order}
-            onDone={handleReceived}
-            onCancel={() => setReceiving(false)}
-            onConflict={handleConflict}
-          />
-        </div>
-      )}
 
       <dl className="mt-6 grid gap-4 rounded-2xl border border-line bg-cream-soft p-4 text-sm sm:grid-cols-3 sm:p-6">
         <div>
@@ -203,52 +187,8 @@ function PurchaseOrderPage() {
 
       <section className="mt-6 rounded-2xl border border-line bg-cream-soft p-4 sm:p-6">
         <h2 className="text-sm font-semibold text-ink">Itens</h2>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full min-w-[36rem] text-left text-sm">
-            <thead>
-              <tr className="border-b border-line text-ink-muted">
-                <th className="py-2 font-medium">Produto</th>
-                <th className="py-2 pr-4 text-right font-medium">Pedido</th>
-                <th className="py-2 pr-4 text-right font-medium">Recebido</th>
-                <th className="py-2 pr-4 text-right font-medium">
-                  {order.status === 'Cancelled' ? 'Cancelado' : 'Pendente'}
-                </th>
-                <th className="py-2 pr-4 text-right font-medium">Preço</th>
-                <th className="py-2 text-right font-medium">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {order.items.map((item) => (
-                <tr key={item.id}>
-                  <td className="py-2">
-                    <p className="text-ink">{item.productName}</p>
-                    <p className="font-mono text-xs text-ink-muted">{item.productSku}</p>
-                  </td>
-                  <td className="py-2 pr-4 text-right tabular-nums text-ink">
-                    {item.quantity.toLocaleString('pt-BR')}
-                  </td>
-                  <td className="py-2 pr-4 text-right tabular-nums text-ink">
-                    {item.receivedQuantity.toLocaleString('pt-BR')}
-                  </td>
-                  <td className="py-2 pr-4 text-right tabular-nums text-ink-muted">
-                    {(item.quantity - item.receivedQuantity).toLocaleString('pt-BR')}
-                  </td>
-                  <td className="py-2 pr-4 text-right tabular-nums text-ink">{formatCurrency(item.unitPrice)}</td>
-                  <td className="py-2 text-right tabular-nums text-ink">
-                    {formatCurrency(item.quantity * item.unitPrice)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t border-line">
-                <td colSpan={5} className="pt-3 text-right text-ink-muted">
-                  Total do pedido
-                </td>
-                <td className="pt-3 text-right font-semibold tabular-nums text-ink">{formatCurrency(total)}</td>
-              </tr>
-            </tfoot>
-          </table>
+        <div className="mt-3">
+          <PurchaseOrderItems items={order.items} cancelled={order.status === 'Cancelled'} />
         </div>
       </section>
 
@@ -258,6 +198,30 @@ function PurchaseOrderPage() {
           <PurchaseReceiptList receipts={order.receipts} />
         </div>
       </section>
+
+      <Modal
+        open={receiving}
+        title="Recebimento de nota"
+        subtitle={
+          <>
+            <span className="font-mono font-medium text-ink">{purchaseOrderCode(order.number)}</span> ·{' '}
+            {order.supplierName}
+            <span className="mt-0.5 block text-xs">Entrada em {order.storageName}</span>
+          </>
+        }
+        busy={receiveBusy}
+        onClose={closeReceiving}
+      >
+        {receiving && (
+          <ReceiptForm
+            order={order}
+            onDone={handleReceived}
+            onCancel={closeReceiving}
+            onConflict={handleConflict}
+            onBusyChange={setReceiveBusy}
+          />
+        )}
+      </Modal>
 
       <Modal
         open={cancelling}
