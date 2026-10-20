@@ -25,23 +25,34 @@ public class StockMovementService
     public async Task<MovementResult> RegisterEntryAsync(
         Guid productId, Guid storageId, string batch, int quantity, string user)
     {
-        _db.StockMovements.Add(new StockMovement
-        {
-            Type = MovementType.Entry,
-            ProductId = productId,
-            StorageId = storageId,
-            Batch = batch,
-            Quantity = quantity,
-            CreatedBy = user
-        });
-
-        var balance = await GetOrCreateBalanceAsync(productId, storageId, batch);
-        balance.Balance += quantity;
+        var balance = await StageEntryAsync(productId, storageId, batch, quantity, user);
 
         if (!await TrySaveAsync())
             return MovementResult.Conflict();
 
         return MovementResult.Ok(balance.Balance);
+    }
+
+    // Lança movimento e saldo no contexto sem gravar: quem chama decide quando salvar, e em qual
+    // transação (o recebimento de compra grava a nota, os itens e as entradas juntos).
+    public async Task<StockBalance> StageEntryAsync(
+        Guid productId, Guid storageId, string batch, int quantity, string user,
+        MovementType type = MovementType.Entry, Guid? purchaseReceiptId = null)
+    {
+        _db.StockMovements.Add(new StockMovement
+        {
+            Type = type,
+            ProductId = productId,
+            StorageId = storageId,
+            Batch = batch,
+            Quantity = quantity,
+            PurchaseReceiptId = purchaseReceiptId,
+            CreatedBy = user
+        });
+
+        var balance = await GetOrCreateBalanceAsync(productId, storageId, batch);
+        balance.Balance += quantity;
+        return balance;
     }
 
     public async Task<MovementResult> RegisterExitAsync(

@@ -22,10 +22,7 @@ public class StockMovementValidator : AbstractValidator<StockMovementDTO>
                 await db.Storages.AnyAsync(s => s.Id == id && s.IsActive, ct))
             .WithMessage("O armazém informado não existe ou está inativo.");
 
-        RuleFor(x => x.Batch)
-            .NotEmpty().WithMessage("O lote é obrigatório.")
-            .Matches("^[A-Z0-9-]{1,30}$")
-            .WithMessage("O lote deve conter apenas letras maiúsculas, números e hífen (até 30 caracteres).");
+        RuleFor(x => x.Batch).MustBeValidBatch();
     }
 }
 
@@ -55,10 +52,7 @@ public class TransferValidator : AbstractValidator<TransferDTO>
                 await db.Storages.AnyAsync(s => s.Id == id && s.IsActive, ct))
             .WithMessage("O armazém de destino não existe ou está inativo.");
 
-        RuleFor(x => x.Batch)
-            .NotEmpty().WithMessage("O lote é obrigatório.")
-            .Matches("^[A-Z0-9-]{1,30}$")
-            .WithMessage("O lote deve conter apenas letras maiúsculas, números e hífen (até 30 caracteres).");
+        RuleFor(x => x.Batch).MustBeValidBatch();
     }
 }
 
@@ -86,9 +80,6 @@ public class AdjustmentValidator : AbstractValidator<AdjustmentDTO>
                 await db.Storages.AnyAsync(s => s.Id == id && s.IsActive, ct))
             .WithMessage("O armazém informado não existe ou está inativo.");
 
-        RuleFor(x => x.Batch)
-            .NotEmpty().WithMessage("O lote é obrigatório.")
-            .Matches("^[A-Z0-9-]{1,30}$")
-            .WithMessage("O lote deve conter apenas letras maiúsculas, números e hífen (até 30 caracteres).");
+        RuleFor(x => x.Batch).MustBeValidBatch();
     }
 }
