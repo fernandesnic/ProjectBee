@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import axios from 'axios'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   formatDocument,
   getPurchaseOrder,
+  isPending,
   purchaseOrderCode,
   type PurchaseOrderDetail,
 } from '../services/api'
@@ -11,6 +12,7 @@ import { formatDateTime } from '../services/date'
 import { formatCurrency } from '../services/price'
 import { PurchaseStatusBadge } from '../components/StatusBadge'
 import { PurchaseReceiptList } from '../components/PurchaseReceiptList'
+import { ReceiptForm } from '../components/ReceiptForm'
 import { Toast } from '../components/Toast'
 
 function PurchaseOrderPage() {
@@ -50,7 +52,36 @@ function PurchaseOrderPage() {
     loadOrder()
   }, [loadOrder])
 
+  const [receiving, setReceiving] = useState(false)
+  const receiveButtonRef = useRef<HTMLButtonElement>(null)
+  const receivingWasOpen = useRef(false)
+
+  // O botão some enquanto o formulário está aberto; ao fechar, o foco volta para ele.
+  useEffect(() => {
+    if (!receiving && receivingWasOpen.current) receiveButtonRef.current?.focus()
+    receivingWasOpen.current = receiving
+  }, [receiving])
+
   const dismissToast = useCallback(() => setToast(null), [])
+
+  function handleReceived(updated: PurchaseOrderDetail) {
+    const invoice = updated.receipts[updated.receipts.length - 1]?.invoiceNumber
+    setOrder(updated)
+    setReceiving(false)
+    setError(null)
+    setToast(
+      updated.status === 'Received'
+        ? `Nota ${invoice} registrada. Pedido recebido por completo.`
+        : `Nota ${invoice} registrada. O restante continua pendente.`,
+    )
+  }
+
+  // Outra pessoa recebeu ou cancelou no meio: a tela velha é descartada e o pedido é relido.
+  function handleConflict(message: string) {
+    setReceiving(false)
+    setError(message)
+    loadOrder()
+  }
 
   if (loading) return <p className="text-sm text-ink-muted">Carregando pedido...</p>
 
@@ -79,7 +110,30 @@ function PurchaseOrderPage() {
           {purchaseOrderCode(order.number)}
         </h1>
         <PurchaseStatusBadge status={order.status} />
+        {isPending(order.status) && !receiving && (
+          <div className="flex w-full gap-2 sm:ml-auto sm:w-auto">
+            <button
+              ref={receiveButtonRef}
+              onClick={() => setReceiving(true)}
+              className="h-11 flex-1 rounded-full bg-honey px-5 text-sm font-semibold text-hive transition hover:bg-honey-light sm:h-auto sm:flex-none sm:py-2"
+            >
+              Registrar recebimento
+            </button>
+          </div>
+        )}
       </div>
+
+      {receiving && (
+        <div className="mt-6 rounded-2xl border border-line bg-cream-soft p-4 sm:p-6">
+          <h2 className="mb-4 text-sm font-semibold text-ink">Recebimento de nota</h2>
+          <ReceiptForm
+            order={order}
+            onDone={handleReceived}
+            onCancel={() => setReceiving(false)}
+            onConflict={handleConflict}
+          />
+        </div>
+      )}
 
       <dl className="mt-6 grid gap-4 rounded-2xl border border-line bg-cream-soft p-4 text-sm sm:grid-cols-3 sm:p-6">
         <div>
