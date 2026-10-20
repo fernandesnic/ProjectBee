@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { createStorage, formErrorsFrom, updateStorage, type Storage } from '../services/api'
+import { FieldError } from './FieldError'
 
 interface StorageFormProps {
   storage?: Storage              // ausente = criação | presente = edição
@@ -64,16 +65,6 @@ export function StorageForm({ storage, onSaved, onCancel }: StorageFormProps) {
     }
   }
 
-  function fieldErrors(field: string) {
-    const messages = errors[field]
-    if (!messages?.length) return null
-    return (
-      <p className="mt-1 text-xs text-danger" role="alert">
-        {messages.join(' ')}
-      </p>
-    )
-  }
-
   const inputClass =
     'mt-1 w-full rounded-lg border border-line bg-cream px-3 py-2 text-sm text-ink outline-none transition focus:border-honey-dark'
 
@@ -91,7 +82,7 @@ export function StorageForm({ storage, onSaved, onCancel }: StorageFormProps) {
           onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
           className={inputClass}
         />
-        {fieldErrors('Name')}
+        <FieldError messages={errors.Name} />
       </div>
 
       <div>
@@ -109,7 +100,7 @@ export function StorageForm({ storage, onSaved, onCancel }: StorageFormProps) {
         {isEditing && (
           <p className="mt-1 text-xs text-ink-muted">O código não pode ser alterado.</p>
         )}
-        {fieldErrors('IdNumber')}
+        <FieldError messages={errors.IdNumber} />
       </div>
 
       <div className="sm:col-span-2">
@@ -125,7 +116,7 @@ export function StorageForm({ storage, onSaved, onCancel }: StorageFormProps) {
           }
           className={inputClass}
         />
-        {fieldErrors('AddressStreet')}
+        <FieldError messages={errors.AddressStreet} />
       </div>
 
       <div>
@@ -141,7 +132,7 @@ export function StorageForm({ storage, onSaved, onCancel }: StorageFormProps) {
           }
           className={inputClass}
         />
-        {fieldErrors('AddressNumber')}
+        <FieldError messages={errors.AddressNumber} />
       </div>
 
       <div>
@@ -157,7 +148,7 @@ export function StorageForm({ storage, onSaved, onCancel }: StorageFormProps) {
           }
           className={inputClass}
         />
-        {fieldErrors('AddressCity')}
+        <FieldError messages={errors.AddressCity} />
       </div>
 
       {isEditing && (
@@ -177,7 +168,7 @@ export function StorageForm({ storage, onSaved, onCancel }: StorageFormProps) {
         </div>
       )}
 
-      {fieldErrors('geral')}
+      <FieldError messages={errors.geral} />
 
       <div className="flex items-center gap-3 sm:col-span-2">
         <button

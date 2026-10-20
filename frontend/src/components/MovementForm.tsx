@@ -12,6 +12,7 @@ import {
   type StockBalance,
   type Storage,
 } from '../services/api'
+import { FieldError } from './FieldError'
 
 export type MovementKind = 'entry' | 'exit' | 'transfer' | 'adjustment'
 
@@ -154,16 +155,6 @@ export function MovementForm({ kind, item, onDone, onCancel, onBusyChange }: Mov
     }
   }
 
-  function fieldErrors(field: string) {
-    const messages = errors[field]
-    if (!messages?.length) return null
-    return (
-      <p className="mt-1 text-xs text-danger" role="alert">
-        {messages.join(' ')}
-      </p>
-    )
-  }
-
   if (loadingOptions) {
     return <p className="text-sm text-ink-muted">Carregando opções...</p>
   }
@@ -193,7 +184,7 @@ export function MovementForm({ kind, item, onDone, onCancel, onBusyChange }: Mov
                 </option>
               ))}
             </select>
-            {fieldErrors('ProductId')}
+            <FieldError messages={errors.ProductId} />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -215,7 +206,7 @@ export function MovementForm({ kind, item, onDone, onCancel, onBusyChange }: Mov
                   </option>
                 ))}
               </select>
-              {fieldErrors('StorageId')}
+              <FieldError messages={errors.StorageId} />
             </div>
 
             <div>
@@ -232,7 +223,7 @@ export function MovementForm({ kind, item, onDone, onCancel, onBusyChange }: Mov
                 className={`${inputClass} font-mono`}
               />
               <p className="mt-1 text-xs text-ink-muted">Letras maiúsculas, números e hífen.</p>
-              {fieldErrors('Batch')}
+              <FieldError messages={errors.Batch} />
             </div>
           </div>
         </>
@@ -260,7 +251,7 @@ export function MovementForm({ kind, item, onDone, onCancel, onBusyChange }: Mov
           {storages.length === 0 && (
             <p className="mt-1 text-xs text-ink-muted">Não há outro armazém ativo para receber.</p>
           )}
-          {fieldErrors('ToStorageId')}
+          <FieldError messages={errors.ToStorageId} />
         </div>
       )}
 
@@ -286,7 +277,7 @@ export function MovementForm({ kind, item, onDone, onCancel, onBusyChange }: Mov
               Disponível: {item.balance.toLocaleString('pt-BR')}
             </p>
           )}
-          {fieldErrors('Quantity')}
+          <FieldError messages={errors.Quantity} />
         </div>
       )}
 
@@ -312,7 +303,7 @@ export function MovementForm({ kind, item, onDone, onCancel, onBusyChange }: Mov
               Informe o total que você contou fisicamente, não a diferença. O sistema calcula o
               ajuste.
             </p>
-            {fieldErrors('CountedQuantity')}
+            <FieldError messages={errors.CountedQuantity} />
           </div>
 
           <dl className="grid grid-cols-3 gap-2 rounded-lg border border-line bg-cream px-3 py-3 text-sm">
@@ -360,7 +351,7 @@ export function MovementForm({ kind, item, onDone, onCancel, onBusyChange }: Mov
               className={`${inputClass} resize-none`}
             />
             <p className="mt-1 text-right text-xs tabular-nums text-ink-muted">{reason.length}/250</p>
-            {fieldErrors('Reason')}
+            <FieldError messages={errors.Reason} />
           </div>
         </>
       )}

@@ -6,25 +6,9 @@ import {
   type CreateProductPayload,
   type Product,
 } from '../services/api'
+import { formatPriceInput, parsePrice } from '../services/price'
+import { FieldError } from './FieldError'
 
-const WITH_THOUSANDS = /^\d{1,3}(\.\d{3})+(,\d{1,2})?$/ // 1.234 ou 1.234,56
-const PLAIN = /^\d+([.,]\d{1,2})?$/ // 1234, 12,50 ou 12.50
-
-// Aceita "12,50", "12.50", "1234,56" e "1.234,56". Fora isso, devolve null.
-function parsePrice(text: string): number | null {
-  const trimmed = text.trim()
-  if (WITH_THOUSANDS.test(trimmed)) {
-    return Number(trimmed.replace(/\./g, '').replace(',', '.'))
-  }
-  if (PLAIN.test(trimmed)) {
-    return Number(trimmed.replace(',', '.'))
-  }
-  return null
-}
-
-function formatPriceInput(price: number) {
-  return price.toFixed(2).replace('.', ',')
-}
 interface ProductFormProps {
   product?: Product              // ausente = criação | presente = edição
   onSaved: (product: Product) => void
@@ -84,16 +68,6 @@ export function ProductForm({ product, onSaved, onCancel }: ProductFormProps) {
     }
   }
 
-  function fieldErrors(field: string) {
-    const messages = errors[field]
-    if (!messages?.length) return null
-    return (
-      <p className="mt-1 text-xs text-danger" role="alert">
-        {messages.join(' ')}
-      </p>
-    )
-  }
-
   return (
     <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
       <div>
@@ -108,7 +82,7 @@ export function ProductForm({ product, onSaved, onCancel }: ProductFormProps) {
           onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
           className="mt-1 w-full rounded-lg border border-line bg-cream px-3 py-2 text-sm text-ink outline-none transition focus:border-honey-dark"
         />
-        {fieldErrors('Name')}
+        <FieldError messages={errors.Name} />
       </div>
 
       <div>
@@ -128,7 +102,7 @@ export function ProductForm({ product, onSaved, onCancel }: ProductFormProps) {
           {isEditing && (
             <p className="mt-1 text-xs text-ink-muted">O SKU não pode ser alterado.</p>
           )}
-        {fieldErrors('SKU')}
+        <FieldError messages={errors.SKU} />
       </div>
 
       <div className="sm:col-span-2">
@@ -142,7 +116,7 @@ export function ProductForm({ product, onSaved, onCancel }: ProductFormProps) {
           onChange={(event) => setForm((current) => ({ ...current, desc: event.target.value }))}
           className="mt-1 w-full rounded-lg border border-line bg-cream px-3 py-2 text-sm text-ink outline-none transition focus:border-honey-dark"
         />
-        {fieldErrors('Desc')}
+        <FieldError messages={errors.Desc} />
       </div>
 
       <div>
@@ -159,7 +133,7 @@ export function ProductForm({ product, onSaved, onCancel }: ProductFormProps) {
           onChange={(event) => setPriceText(event.target.value)}
           className="mt-1 w-full rounded-lg border border-line bg-cream px-3 py-2 text-sm text-ink outline-none transition focus:border-honey-dark"
         />
-        {fieldErrors('Price')}
+        <FieldError messages={errors.Price} />
       </div>
       
       {isEditing && (
@@ -179,7 +153,7 @@ export function ProductForm({ product, onSaved, onCancel }: ProductFormProps) {
       </div>
     )}
 
-      {fieldErrors('geral')}
+      <FieldError messages={errors.geral} />
 
       <div className="flex items-center gap-3 sm:col-span-2">
         <button
