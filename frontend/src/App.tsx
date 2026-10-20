@@ -8,6 +8,7 @@ import { useEffect } from 'react'
 import { setNavigator } from './services/navigation'
 import StoragesPage from './pages/StoragesPage'
 import StockPage from './pages/StockPage'
+import SuppliersPage from './pages/SuppliersPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 function NavigatorSetup() {
@@ -31,6 +32,7 @@ function App() {
           <Route index element={<DashboardPage />} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="storages" element={<StoragesPage />} />
+          <Route path="suppliers" element={<SuppliersPage />} />
           <Route path="stock" element={<StockPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />

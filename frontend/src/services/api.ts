@@ -148,6 +148,58 @@ export async function deleteStorage(id: string) {
   await api.delete(`/api/storages/${id}`)
 }
 
+export interface Supplier {
+  id: string
+  name: string
+  document: string // CPF ou CNPJ, só dígitos
+  email: string
+  phone: string
+  isActive: boolean
+  rowVersion: string // base64; volta no PUT para a API detectar edição concorrente
+}
+
+interface SupplierFields {
+  name: string
+  email: string
+  phone: string
+}
+
+export interface CreateSupplierPayload extends SupplierFields {
+  document: string
+}
+
+export interface UpdateSupplierPayload extends SupplierFields {
+  rowVersion: string
+  isActive: boolean
+}
+
+// 11 dígitos = CPF (000.000.000-00), 14 = CNPJ (00.000.000/0000-00). Outro tamanho volta como está.
+export function formatDocument(document: string) {
+  if (document.length === 11) return document.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+  if (document.length === 14)
+    return document.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
+  return document
+}
+
+export async function getSuppliers() {
+  const { data } = await api.get<Supplier[]>('/api/suppliers')
+  return data
+}
+
+export async function createSupplier(payload: CreateSupplierPayload) {
+  const { data } = await api.post<Supplier>('/api/suppliers', payload)
+  return data
+}
+
+export async function updateSupplier(id: string, payload: UpdateSupplierPayload) {
+  const { data } = await api.put<Supplier>(`/api/suppliers/${id}`, payload)
+  return data
+}
+
+export async function deleteSupplier(id: string) {
+  await api.delete(`/api/suppliers/${id}`)
+}
+
 export interface StockBalance {
   productId: string
   productName: string

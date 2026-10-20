@@ -28,6 +28,7 @@ const NAV_GROUPS: NavGroup[] = [
     children: [
       { to: '/app/products', label: 'Produtos' },
       { to: '/app/storages', label: 'Armazéns' },
+      { to: '/app/suppliers', label: 'Fornecedores' },
       { label: 'Clientes' },
     ],
   },
