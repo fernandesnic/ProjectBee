@@ -88,6 +88,17 @@ public static class SupplierEndpointsExtensions
                 return Results.NotFound(new { mensagem = $"Fornecedor não encontrado" });
             }
 
+            // Pedido em aberto ainda vai gerar nota e conta a pagar: o fornecedor precisa continuar no cadastro.
+            var pendingOrders = await db.PurchaseOrders.CountAsync(o => o.SupplierId == id
+                && (o.Status == PurchaseOrderStatus.Open || o.Status == PurchaseOrderStatus.Partial));
+            if (pendingOrders > 0)
+            {
+                return Results.Problem(
+                    title: "Exclusão recusada",
+                    detail: $"O fornecedor tem {pendingOrders} pedido(s) de compra aberto(s) ou parcial(is). Receba ou cancele o pendente antes de excluí-lo.",
+                    statusCode: StatusCodes.Status422UnprocessableEntity);
+            }
+
             var now = DateTime.UtcNow;
             supplier.DeletedAt = now;
             supplier.IsActive = false;
@@ -98,11 +109,12 @@ public static class SupplierEndpointsExtensions
         })
         .RequireAuthorization(policy => policy.RequireRole(Roles.Manager))
         .WithSummary("Remove um fornecedor")
-        .WithDescription("Exclusão lógica (soft delete): o fornecedor some das listagens, mas o documento continua reservado. Requer perfil Manager.")
+        .WithDescription("Exclusão lógica (soft delete): o fornecedor some das listagens, mas o documento continua reservado e os pedidos antigos seguem apontando para ele. Fornecedor com pedido aberto ou parcial retorna 422. Requer perfil Manager.")
         .Produces(StatusCodes.Status204NoContent)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
-        .Produces(StatusCodes.Status404NotFound);
+        .Produces(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         suppliersApi.MapPut("/{id}", async (UpdateSupplierDTO dto, IValidator<UpdateSupplierDTO> validator, AppDbContext db, Guid id) =>
         {

@@ -136,4 +136,6 @@ app.MapStockEndpoints();
 
 app.MapMovementEndpoints();
 
+app.MapPurchaseOrderEndpoints();
+
 app.Run();
