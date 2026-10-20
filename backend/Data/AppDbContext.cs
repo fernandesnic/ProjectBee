@@ -1,5 +1,6 @@
 ﻿using ProjectBee.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace ProjectBee.Data;
@@ -16,6 +17,9 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<StockBalance> StockBalances => Set<StockBalance>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+    public DbSet<PurchaseOrderItem> PurchaseOrderItems => Set<PurchaseOrderItem>();
+    public DbSet<PurchaseReceipt> PurchaseReceipts => Set<PurchaseReceipt>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
 {
     base.OnModelCreating(modelBuilder);
@@ -63,6 +67,74 @@ public class AppDbContext : IdentityDbContext<AppUser>
         e.HasOne(x => x.Storage).WithMany()
         .HasForeignKey(x => x.StorageId)
         .OnDelete(DeleteBehavior.Restrict);
+
+        e.HasOne<PurchaseReceipt>().WithMany()
+            .HasForeignKey(x => x.PurchaseReceiptId)
+            .OnDelete(DeleteBehavior.Restrict);
         });
+
+    modelBuilder.Entity<PurchaseOrder>(e =>
+    {
+        // Número legível do pedido (PC-000123), gerado pelo banco para não repetir entre requisições simultâneas.
+        e.Property(x => x.Number).UseIdentityColumn();
+        e.Property(x => x.Number).Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
+        e.HasIndex(x => x.Number).IsUnique();
+        e.HasIndex(x => x.Status);
+
+        e.Property(x => x.Notes).HasMaxLength(500);
+        e.Property(x => x.CreatedBy).HasMaxLength(256);
+        e.Property(x => x.CancelledBy).HasMaxLength(256);
+        e.Property(x => x.CancelReason).HasMaxLength(250);
+        e.Property(x => x.RowVersion).IsRowVersion();
+
+        e.HasOne(x => x.Supplier).WithMany()
+            .HasForeignKey(x => x.SupplierId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        e.HasOne(x => x.Storage).WithMany()
+            .HasForeignKey(x => x.StorageId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        e.HasMany(x => x.Items).WithOne()
+            .HasForeignKey(x => x.PurchaseOrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        e.HasMany(x => x.Receipts).WithOne(x => x.PurchaseOrder)
+            .HasForeignKey(x => x.PurchaseOrderId)
+            .OnDelete(DeleteBehavior.Restrict);
+    });
+
+    modelBuilder.Entity<PurchaseOrderItem>(e =>
+    {
+        e.Property(x => x.UnitPrice).HasPrecision(14, 2);
+        // Um produto aparece uma vez por pedido: o recebimento aponta para a linha sem ambiguidade.
+        e.HasIndex(x => new { x.PurchaseOrderId, x.ProductId }).IsUnique();
+
+        e.HasOne(x => x.Product).WithMany()
+            .HasForeignKey(x => x.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
+    });
+
+    modelBuilder.Entity<PurchaseReceipt>(e =>
+    {
+        e.Property(x => x.InvoiceNumber).HasMaxLength(20);
+        e.HasIndex(x => x.InvoiceNumber);
+        e.Property(x => x.PriceDivergenceReason).HasMaxLength(250);
+        e.Property(x => x.CreatedBy).HasMaxLength(256);
+
+        e.HasMany(x => x.Items).WithOne()
+            .HasForeignKey(x => x.PurchaseReceiptId)
+            .OnDelete(DeleteBehavior.Cascade);
+    });
+
+    modelBuilder.Entity<PurchaseReceiptItem>(e =>
+    {
+        e.Property(x => x.Batch).HasMaxLength(30);
+        e.Property(x => x.UnitPrice).HasPrecision(14, 2);
+
+        e.HasOne(x => x.PurchaseOrderItem).WithMany()
+            .HasForeignKey(x => x.PurchaseOrderItemId)
+            .OnDelete(DeleteBehavior.Restrict);
+    });
     }
 }
