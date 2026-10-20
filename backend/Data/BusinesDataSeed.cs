@@ -10,6 +10,8 @@ public static class BusinessDataSeedExtensions
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
+        await SeedSuppliersAsync(db);
+
         if (await db.Products.AnyAsync())
         {
             return; // já tem dado, não duplica em cada restart
@@ -56,6 +58,23 @@ public static class BusinessDataSeedExtensions
                 CreatedBy = "system"
             });
         }
+
+        await db.SaveChangesAsync();
+    }
+
+    // Checagem própria: bancos semeados antes do módulo de compras também ganham fornecedores.
+    private static async Task SeedSuppliersAsync(AppDbContext db)
+    {
+        if (await db.Suppliers.IgnoreQueryFilters().AnyAsync())
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        db.Suppliers.AddRange(
+            new Supplier { Name = "Cooperativa Apícola do Vale", Document = "11222333000181", Email = "vendas@apicoladovale.dev", Phone = "(11) 4002-8922", IsActive = true, CreatedAt = now, UpdatedAt = now },
+            new Supplier { Name = "Embalagens Favo Ltda.", Document = "44555666000172", Email = "pedidos@favoembalagens.dev", Phone = "(19) 3232-1000", IsActive = true, CreatedAt = now, UpdatedAt = now },
+            new Supplier { Name = "João Batista Apicultor", Document = "12345678909", Email = "", Phone = "(15) 99876-5432", IsActive = true, CreatedAt = now, UpdatedAt = now });
 
         await db.SaveChangesAsync();
     }
