@@ -19,6 +19,13 @@
 @storageRowVersionBeforeDeactivate = {{getStorageBeforeDeactivate.response.body.$.rowVersion}}
 @storage2RowVersion = {{getStorage2.response.body.$.rowVersion}}
 
+# Compras: o recebimento e o cancelamento exigem o rowVersion do pedido, que muda a cada operação.
+@supplierId = {{createSupplier.response.body.$.id}}
+@orderId = {{createOrder.response.body.$.id}}
+@orderItemId = {{createOrder.response.body.$.items[0].id}}
+@orderRowVersion = {{createOrder.response.body.$.rowVersion}}
+@orderRowVersionAfterReceipt = {{receivePartial.response.body.$.rowVersion}}
+
 
 ### =====================================================
 ### HEALTH CHECK
@@ -308,3 +315,97 @@ Content-Type: {{contentType}}
 Authorization: Bearer {{token}}
 
 { "name": "Depósito Barueri", "addressNumber": "S/N", "addressStreet": "Avenida Industrial", "addressCity": "Barueri", "isActive": false, "rowVersion": "{{storage2RowVersion}}" }
+
+
+### =====================================================
+### FORNECEDORES E COMPRAS
+### =====================================================
+
+### Criar fornecedor -> 201 (CNPJ aleatório, só dígitos)
+# @name createSupplier
+POST {{host}}/api/suppliers
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "name": "Cooperativa Apícola Serra Azul", "document": "11222333{{$randomInt 100000 999999}}", "email": "vendas@serraazul.dev", "phone": "(11) 4000-1234" }
+
+### CPF com pontuação -> 400 (a API espera só os dígitos)
+POST {{host}}/api/suppliers
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "name": "Fornecedor pontuado", "document": "123.456.789-09", "email": "", "phone": "" }
+
+### Criar pedido de compra: 30 unidades a R$ 21,00 -> 201, status Open
+# @name createOrder
+POST {{host}}/api/purchase-orders
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "supplierId": "{{supplierId}}", "storageId": "{{storageId}}", "notes": "Reposição da safra", "items": [ { "productId": "{{productId}}", "quantity": 30, "unitPrice": 21.00 } ] }
+
+### Pedido com o mesmo produto duas vezes -> 400
+POST {{host}}/api/purchase-orders
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "supplierId": "{{supplierId}}", "storageId": "{{storageId}}", "items": [ { "productId": "{{productId}}", "quantity": 1, "unitPrice": 1 }, { "productId": "{{productId}}", "quantity": 2, "unitPrice": 1 } ] }
+
+### Receber mais que o pedido -> 422 (pendente 30, informado 35)
+POST {{host}}/api/purchase-orders/{{orderId}}/receipts
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "invoiceNumber": "NF-1001", "rowVersion": "{{orderRowVersion}}", "items": [ { "purchaseOrderItemId": "{{orderItemId}}", "batch": "LOTE-COMPRA-01", "quantity": 35, "unitPrice": 21.00 } ] }
+
+### Nota com preço diferente do pedido, sem motivo -> 422 (lista pedido e nota)
+POST {{host}}/api/purchase-orders/{{orderId}}/receipts
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "invoiceNumber": "NF-1001", "rowVersion": "{{orderRowVersion}}", "items": [ { "purchaseOrderItemId": "{{orderItemId}}", "batch": "LOTE-COMPRA-01", "quantity": 20, "unitPrice": 22.40 } ] }
+
+### Recebimento parcial com divergência justificada -> 200, status Partial, 20 de 30
+# @name receivePartial
+POST {{host}}/api/purchase-orders/{{orderId}}/receipts
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "invoiceNumber": "NF-1001", "priceDivergenceReason": "Reajuste de tabela confirmado pelo comprador", "rowVersion": "{{orderRowVersion}}", "items": [ { "purchaseOrderItemId": "{{orderItemId}}", "batch": "LOTE-COMPRA-01", "quantity": 20, "unitPrice": 22.40 } ] }
+
+### Mesma entrega lançada com a versão velha -> 409
+POST {{host}}/api/purchase-orders/{{orderId}}/receipts
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "invoiceNumber": "NF-1002", "rowVersion": "{{orderRowVersion}}", "items": [ { "purchaseOrderItemId": "{{orderItemId}}", "batch": "LOTE-COMPRA-01", "quantity": 10, "unitPrice": 21.00 } ] }
+
+### Mesma nota de novo -> 422 (a nota já foi lançada)
+POST {{host}}/api/purchase-orders/{{orderId}}/receipts
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "invoiceNumber": "NF-1001", "rowVersion": "{{orderRowVersionAfterReceipt}}", "items": [ { "purchaseOrderItemId": "{{orderItemId}}", "batch": "LOTE-COMPRA-01", "quantity": 1, "unitPrice": 21.00 } ] }
+
+### Excluir fornecedor com pedido parcial -> 422
+DELETE {{host}}/api/suppliers/{{supplierId}}
+Authorization: Bearer {{token}}
+
+### Cancelar o pendente (10 unidades) -> 200, status Cancelled; as 20 recebidas ficam no estoque
+POST {{host}}/api/purchase-orders/{{orderId}}/cancel
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "reason": "Fornecedor sem estoque para o restante", "rowVersion": "{{orderRowVersionAfterReceipt}}" }
+
+### Pedido com itens e notas -> 200 (preço da nota ao lado do preço do pedido)
+GET {{host}}/api/purchase-orders/{{orderId}}
+Authorization: Bearer {{token}}
+
+### Pedidos cancelados -> 200
+GET {{host}}/api/purchase-orders?status=Cancelled
+Authorization: Bearer {{token}}
+
+### Histórico do lote comprado -> 200, um movimento PurchaseReceipt de +20
+GET {{host}}/api/movements?productId={{productId}}&storageId={{storageId}}&batch=LOTE-COMPRA-01
+Authorization: Bearer {{token}}

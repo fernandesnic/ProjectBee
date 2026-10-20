@@ -49,7 +49,12 @@ Product ──┐
           │    RowVersion (concorrência otimista)
           │
           └──< StockMovement >── Storage         histórico imutável (N linhas por lote)
-               Type, Quantity (com sinal), Reason, TransferId, CreatedBy, CreatedAt
+               Type, Quantity (com sinal), Reason, TransferId, PurchaseReceiptId, CreatedBy, CreatedAt
+
+Supplier ──< PurchaseOrder >── Storage           pedido de compra (Number sequencial, Status, RowVersion)
+               ├──< PurchaseOrderItem >── Product        pedido, recebido, preço do pedido
+               └──< PurchaseReceipt                      uma nota fiscal do fornecedor
+                      └──< PurchaseReceiptItem           lote, quantidade, preço da nota
 
 AppUser ──< IdentityUserRole >── IdentityRole (Manager | Operator)
 ```
@@ -170,6 +175,28 @@ O `/api/stock` é **somente leitura**. Os antigos `POST`, `PUT` e `DELETE` grava
 | `PUT` | `/api/storages/{id}` | Atualiza armazém (exige `rowVersion`) | Manager | `200` `400` `404` `409` `422` |
 | `DELETE` | `/api/storages/{id}` | Remove armazém | Manager | `204` `404` `422` |
 
+### Fornecedores
+
+| Método | Rota | Descrição | Autorização | Respostas |
+|---|---|---|---|---|
+| `POST` | `/api/suppliers` | Cadastra fornecedor | Manager | `201` `400` |
+| `GET` | `/api/suppliers` | Lista fornecedores | Manager, Operator | `200` |
+| `GET` | `/api/suppliers/{id}` | Busca por ID | Manager, Operator | `200` `404` |
+| `PUT` | `/api/suppliers/{id}` | Atualiza fornecedor (exige `rowVersion`) | Manager | `200` `400` `404` `409` |
+| `DELETE` | `/api/suppliers/{id}` | Remove fornecedor | Manager | `204` `404` `422` |
+
+### Compras
+
+| Método | Rota | Corpo | Autorização | Respostas |
+|---|---|---|---|---|
+| `GET` | `/api/purchase-orders?status=&supplierId=` | — | Manager, Operator | `200` |
+| `GET` | `/api/purchase-orders/{id}` | — | Manager, Operator | `200` `404` |
+| `POST` | `/api/purchase-orders` | `supplierId`, `storageId`, `notes`, `items[]` (`productId`, `quantity`, `unitPrice`) | Manager | `201` `400` |
+| `POST` | `/api/purchase-orders/{id}/receipts` | `invoiceNumber`, `priceDivergenceReason`, `rowVersion`, `items[]` (`purchaseOrderItemId`, `batch`, `quantity`, `unitPrice`) | Manager, Operator | `200` `400` `404` `409` `422` |
+| `POST` | `/api/purchase-orders/{id}/cancel` | `reason`, `rowVersion` | Manager | `200` `400` `403` `404` `409` `422` |
+
+Criar, receber e cancelar devolvem o pedido completo, com itens, recebimentos e o `rowVersion` novo.
+
 > O arquivo [`ProjectBee.http`](./backend/ProjectBee.http) roda de ponta a ponta, incluindo os casos de erro: o login guarda o token e as criações guardam os IDs, então basta executar as requisições na ordem. Cada uma traz no título o status esperado.
 
 ---
@@ -206,6 +233,23 @@ O `/api/stock` é **somente leitura**. Os antigos `POST`, `PUT` e `DELETE` grava
 - `IsActive` é obrigatório na atualização (`bool?` no DTO + `NotNull` no validator): omitir o campo desativaria o produto silenciosamente, já que o default de `bool` é `false`
 - Excluir produto com saldo é recusado com `422`. Com saldo zerado mas com histórico, também — a mesma regra dos armazéns. Nesse caso, o caminho é desativar
 
+**Fornecedores**
+- CPF (11 dígitos) ou CNPJ (14), gravado só com dígitos, único inclusive entre excluídos e imutável — como o SKU
+- E-mail e telefone opcionais, validados quando informados
+- Fornecedor inativo não recebe pedido novo; excluir fornecedor com pedido aberto ou parcial é recusado com `422`
+
+**Compras**
+- O pedido nasce **Aberto** (aprovado, aguardando entrega) e muda de status pelos recebimentos: **Parcial** enquanto falta algo, **Recebido** quando todos os itens chegaram. **Cancelado** só por ação do `Manager`
+- Fornecedor, armazém e produtos ativos; cada produto uma vez por pedido, quantidade e preço maiores que zero
+- Cada recebimento é uma nota fiscal e dá entrada no estoque do armazém do pedido, lote a lote, com movimento do tipo `PurchaseReceipt` ligado à nota — a prova real do livro-razão continua fechando
+- **Recebimento menor que o pedido** deixa o item pendente e o pedido Parcial, aguardando as próximas notas. Um item que não veio na nota simplesmente fica de fora dela
+- **Recebimento maior que o pendente** é recusado com `422`, informando pendente e informado: o excedente volta com o fornecedor ou vira um pedido novo. Aceitar a sobra em silêncio inflaria o estoque e o futuro título a pagar
+- **Preço da nota diferente do pedido** é aceito, mas só com `priceDivergenceReason` (5 a 250 caracteres); sem ele, `422` listando cada item com o preço do pedido e o da nota. O preço gravado no recebimento é o da nota — é o que será pago
+- **Cancelar depois de receber parte** cancela só o pendente: o que chegou continua no estoque e as notas seguem registradas. Pedido Recebido não tem o que cancelar; pedido Cancelado não aceita nota
+- A mesma nota do mesmo fornecedor não entra duas vezes, nem em pedidos diferentes
+- Produto ou armazém desativados depois do pedido bloqueiam o recebimento com `422`, como nos movimentos manuais
+- Receber e cancelar exigem o `rowVersion` do pedido: duas pessoas lançando a mesma entrega, ou um cancelamento em cima de um recebimento, terminam em `409` para a segunda
+
 ---
 
 ## Decisões técnicas
@@ -213,6 +257,10 @@ O `/api/stock` é **somente leitura**. Os antigos `POST`, `PUT` e `DELETE` grava
 **Saldo materializado + livro-razão, na mesma transação.** O saldo poderia ser calculado na hora com `SUM(Quantity)`, mas toda consulta de estoque pagaria o custo de somar o histórico inteiro. Manter a linha de saldo e o movimento atualizados juntos dá leitura barata e histórico completo. O risco dessa escolha — os dois divergirem — é coberto de três formas: um único caminho de escrita (o `StockMovementService`), gravação atômica e a query de prova real rodando nos testes.
 
 **Concorrência otimista com `rowversion`.** O furo clássico: duas saídas leem saldo 10 ao mesmo tempo, as duas passam na checagem e as duas gravam — uma atualização se perde, e o saldo pode até ficar negativo. O `StockBalance` tem uma coluna `rowversion` que o SQL Server incrementa a cada `UPDATE`. O EF inclui o valor lido no `WHERE`; se outra requisição gravou no meio, nenhuma linha é afetada, o EF lança `DbUpdateConcurrencyException` e a API devolve `409`. Escolhi otimista em vez de lock pessimista porque conflito no mesmo lote é raro: não faz sentido travar toda leitura para proteger um caso eventual.
+
+**Unit of Work nas compras.** Um recebimento mexe em várias tabelas ao mesmo tempo: nota, itens da nota, quantidade recebida, status do pedido, movimentos e saldos — e, no futuro, contas a pagar. O `UnitOfWork` abre uma transação, roda o trabalho inteiro e só confirma se ele terminar com sucesso; regra recusada, conflito de concorrência ou exceção em qualquer passo desfazem tudo, mesmo o que já tinha passado por `SaveChanges`, e limpam o `ChangeTracker`. Como a API usa `EnableRetryOnFailure` (Azure SQL acordando), a transação roda dentro da estratégia de execução do EF: se a conexão cair no meio, o bloco inteiro é repetido do zero, por isso o trabalho faz as próprias leituras. A entrada no estoque reaproveita o `StockMovementService` (`StageEntryAsync`), que lança movimento e saldo sem gravar, então continua existindo um único caminho de escrita no livro-razão.
+
+**Contas a pagar engatilhado.** O `PurchaseService` chama cada `IPurchaseReceiptListener` registrado dentro da mesma unidade de trabalho do recebimento, com o pedido e a nota (número, fornecedor, itens e preço da nota). O módulo financeiro só precisa registrar um listener que crie o título: se ele falhar, o recebimento inteiro é desfeito, e nunca existe nota no estoque sem título ou título sem nota. Hoje nenhum está registrado.
 
 **`409` e `422` são coisas diferentes.** `422` diz "isso não pode ser feito" (saldo insuficiente) — repetir não adianta. `409` diz "o mundo mudou enquanto você decidia" — consultar o saldo e repetir pode dar certo. Separar os dois deixa o cliente reagir certo a cada um.
 
@@ -251,10 +299,10 @@ cd ProjectBee/tests/ProjectBee.Tests
 dotnet test
 ```
 
-São 41 testes, em duas camadas:
+São 70 testes, em duas camadas:
 
-- **Serviço** (`StockMovementServiceTests`) — as regras do livro-razão chamando o `StockMovementService` direto: saldo insuficiente, transferência para o mesmo armazém, ajuste sem diferença, sinal de cada movimento, par de transferência com o mesmo `TransferId`, e a prova real depois de uma sequência mista de operações.
-- **API** (`MovementEndpointTests`, `StorageEndpointTests`, `ProductEndpointTests`, `SeedTests`) — a aplicação inteira via `WebApplicationFactory`, com autenticação de verdade: `400` com erros por campo, `422` com `detail`, `401` sem token, `403` do Operator no ajuste, bloqueios de desativação e exclusão de armazém e produto, o `/api/stock` recusando escrita, e a prova real fechando com os dados de demonstração num banco recém-criado.
+- **Serviço** (`StockMovementServiceTests`, `PurchaseServiceTests`, `UnitOfWorkTests`) — as regras do livro-razão chamando o `StockMovementService` direto: saldo insuficiente, transferência para o mesmo armazém, ajuste sem diferença, sinal de cada movimento, par de transferência com o mesmo `TransferId`, e a prova real depois de uma sequência mista de operações. Nas compras, cada caso de borda: recebimento parcial e total, excedente, cancelamento depois de receber parte, nota em pedido cancelado, preço da nota diferente do pedido, nota repetida, `rowVersion` velho e um listener que falha depois do `SaveChanges` — sem deixar nota, saldo ou movimento para trás.
+- **API** (`MovementEndpointTests`, `StorageEndpointTests`, `ProductEndpointTests`, `SupplierEndpointTests`, `PurchaseOrderEndpointTests`, `SeedTests`) — a aplicação inteira via `WebApplicationFactory`, com autenticação de verdade: `400` com erros por campo, `422` com `detail`, `401` sem token, `403` do Operator no ajuste e na criação e cancelamento de pedido, bloqueios de desativação e exclusão de armazém, produto e fornecedor, o `/api/stock` recusando escrita, e a prova real fechando com os dados de demonstração num banco recém-criado. Os testes de compras passam pelo `EnableRetryOnFailure` da API, então também provam que a transação do `UnitOfWork` roda dentro da estratégia de execução.
 
 A concorrência é testada de dois jeitos:
 
@@ -269,7 +317,7 @@ Os testes usam o SQL Server de `localhost` com autenticação do Windows. Para a
 
 ## Telas
 
-O frontend cobre os três módulos, com a UI condicionada ao perfil do usuário — um `Operator` logado não vê os botões de criação e exclusão de dados mestres, nem o de ajuste de inventário.
+O frontend cobre todos os módulos, com a UI condicionada ao perfil do usuário — um `Operator` logado não vê os botões de criação e exclusão de dados mestres, nem o de ajuste de inventário, nem os de criar e cancelar pedido de compra (mas registra o recebimento das notas).
 
 | Rota | Tela | O que mostra |
 |---|---|---|
@@ -279,6 +327,11 @@ O frontend cobre os três módulos, com a UI condicionada ao perfil do usuário 
 | `/app/products` | Produtos | CRUD, valor em estoque por produto, produtos sem saldo |
 | `/app/storages` | Armazéns | CRUD, armazéns ativos, valor armazenado |
 | `/app/stock` | Estoque | Saldos por lote, unidades e valor total; entrada, saída, transferência, ajuste e histórico de cada lote |
+| `/app/suppliers` | Fornecedores | CRUD com CPF/CNPJ mascarado e contato |
+| `/app/purchases` | Pedidos de compra | Pedidos pendentes, unidades a receber, filtro por status e criação de pedido |
+| `/app/purchases/:id` | Pedido de compra | Itens com pedido, recebido e pendente; notas recebidas; recebimento de nota e cancelamento do pendente |
+
+No recebimento, cada item pendente já vem com a quantidade pendente e o preço do pedido: o caso comum (a nota bate com o pedido) é só informar a nota e os lotes. Preço diferente fica destacado e pede o motivo; quantidade acima do pendente é barrada antes de enviar.
 
 Na tela de estoque, cada lote já carrega produto, armazém e lote, então os formulários de movimento só pedem o que falta: a quantidade, o destino ou o motivo. No ajuste, a tela deixa claro que o campo é a **quantidade contada** e mostra a diferença que será lançada antes de confirmar. Depois de cada movimento, o saldo é recarregado.
 
@@ -293,7 +346,7 @@ As telas são responsivas: no celular, a lista vira cartões e os formulários a
 ```
 ProjectBee/
 ├── backend/                # API .NET
-│   ├── Data/                   # AppDbContext, seed do Identity e seed de dados de negócio
+│   ├── Data/                   # AppDbContext, UnitOfWork, seed do Identity e seed de dados de negócio
 │   ├── DTO/                    # Contratos de entrada e saída, uma pasta por módulo
 │   ├── Endpoints/              # Mapeamento HTTP por módulo
 │   ├── Filters/                # OperationFilter do Swagger
@@ -301,7 +354,7 @@ ProjectBee/
 │   ├── Middlewares/            # Tratamento global de exceções
 │   ├── Migrations/             # Histórico do schema e scripts de dados (EF Core)
 │   ├── Models/                 # Entidades de domínio e constantes de perfil
-│   ├── Services/               # StockMovementService (livro-razão) e geração de JWT
+│   ├── Services/               # StockMovementService (livro-razão), PurchaseService (compras) e JWT
 │   └── Validators/             # Regras de validação (FluentValidation)
 ├── tests/
 │   └── ProjectBee.Tests/   # xUnit: testes de serviço e de API contra SQL Server
@@ -309,7 +362,8 @@ ProjectBee/
     └── src/
         ├── components/         # AppLayout, tabelas e formulários de cada módulo,
         │                       #   MovementForm, MovementHistory, Modal, ConfirmDialog, Toast
-        ├── pages/              # Landing, Login, Dashboard, Products, Storages, Stock
+        ├── pages/              # Landing, Login, Dashboard, Products, Storages, Stock,
+        │                       #   Suppliers, PurchaseOrders, PurchaseOrder
         └── services/           # api.ts (Axios + interceptors), token.ts (JWT),
                                 #   navigation.ts (redirect 401 via React Router)
 ```
@@ -375,11 +429,14 @@ O frontend sobe em `http://localhost:5173` e aponta para `http://localhost:5054`
 - [x] Bloquear exclusão de produto com saldo ou histórico, com a mesma regra dos armazéns
 - [x] Deploy com demo pública: frontend na Vercel, API em container Docker no Azure e banco no Azure SQL
 - [x] Dockerfile da API, com build em duas etapas (SDK para compilar, runtime para rodar)
+- [x] Módulo de compras: fornecedores, pedidos com recebimento parcial ou total por nota, cancelamento do pendente e divergência de preço, numa unidade de trabalho
 
 **Próximo**
 - [ ] Devolver `409` também quando duas entradas simultâneas criam o mesmo lote novo
 - [ ] `GET /api/stock/summary` — agregação de valor no banco (`SUM(Price * Balance)`) em vez de somar no cliente
 - [ ] Paginação e busca nas listagens
+- [ ] Contas a pagar: um `IPurchaseReceiptListener` que gera o título de cada nota recebida
+- [ ] Editar itens de um pedido ainda sem recebimento (hoje o caminho é cancelar e criar outro)
 
 **Depois**
 - [ ] Docker Compose e CI no GitHub Actions (rodando os testes contra um SQL Server em container)
