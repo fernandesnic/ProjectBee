@@ -82,6 +82,7 @@ ValidatorOptions.Global.LanguageManager.Culture = new System.Globalization.Cultu
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddScoped<UnitOfWork>();
 builder.Services.AddScoped<StockMovementService>();
 
 builder.Services.AddSingleton<TokenService>();
