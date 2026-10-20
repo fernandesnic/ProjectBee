@@ -128,6 +128,8 @@ app.MapProductEndpoints();
 
 app.MapStorageEndpoints();
 
+app.MapSupplierEndpoints();
+
 app.MapStockEndpoints();
 
 app.MapMovementEndpoints();

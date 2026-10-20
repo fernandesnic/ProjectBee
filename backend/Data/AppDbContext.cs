@@ -15,6 +15,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<Storage> Storages => Set<Storage>();
     public DbSet<StockBalance> StockBalances => Set<StockBalance>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
 {
     base.OnModelCreating(modelBuilder);
@@ -31,6 +32,17 @@ public class AppDbContext : IdentityDbContext<AppUser>
 
     modelBuilder.Entity<Storage>().Property(x => x.IdNumber).HasMaxLength(20);
     modelBuilder.Entity<Storage>().HasIndex(x => x.IdNumber).IsUnique();
+
+    modelBuilder.Entity<Supplier>(e =>
+    {
+        e.Property(x => x.Name).HasMaxLength(150);
+        e.Property(x => x.Document).HasMaxLength(14);
+        e.HasIndex(x => x.Document).IsUnique();
+        e.Property(x => x.Email).HasMaxLength(256);
+        e.Property(x => x.Phone).HasMaxLength(20);
+        e.Property(x => x.RowVersion).IsRowVersion();
+        e.HasQueryFilter(x => x.DeletedAt == null);
+    });
 
     modelBuilder.Entity<Product>().HasQueryFilter(p => p.DeletedAt == null);
     modelBuilder.Entity<Storage>().HasQueryFilter(s => s.DeletedAt == null);

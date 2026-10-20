@@ -48,6 +48,23 @@ public static class TestData
         return storage;
     }
 
+    public static async Task<Supplier> CreateSupplierAsync(TestDatabase database)
+    {
+        var supplier = new Supplier
+        {
+            Name = "Fornecedor de teste",
+            Document = Random.Shared.NextInt64(10_000_000_000_000, 100_000_000_000_000).ToString(),
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        await using var db = database.CreateContext();
+        db.Suppliers.Add(supplier);
+        await db.SaveChangesAsync();
+        return supplier;
+    }
+
     public static async Task<int?> GetBalanceAsync(TestDatabase database, Guid productId, Guid storageId, string batch = Batch)
     {
         await using var db = database.CreateContext();
