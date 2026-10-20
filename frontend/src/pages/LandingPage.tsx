@@ -59,18 +59,19 @@ const PAIN_POINTS = [
   'Você compra o que já tinha parado em outro armazém.',
   'Vende o que não tem e descobre na hora de separar.',
   'O lote vence no fundo do galpão porque ninguém sabia que estava lá.',
+  'A nota chega com preço diferente do pedido, e ninguém percebe até a hora de pagar.',
 ]
 
 const STEPS = [
   {
-    title: 'Cadastre produtos e armazéns',
+    title: 'Cadastre produtos, armazéns e fornecedores',
     description:
-      'Defina onde cada produto pode existir e comece a rastrear por lote desde a primeira entrada.',
+      'Defina onde cada produto pode existir, de quem você compra, e comece a rastrear por lote desde a primeira entrada.',
   },
   {
-    title: 'Registre entradas, saídas e transferências',
+    title: 'Compre e receba por nota',
     description:
-      'Cada movimentação fica no histórico e atualiza o saldo na hora, direto na base que o resto do sistema vai consumir.',
+      'O pedido de compra dá entrada no estoque à medida que as notas chegam, parcial ou total. Saídas, transferências e ajustes ficam no mesmo histórico.',
   },
   {
     title: 'Acompanhe o saldo consolidado',
@@ -88,6 +89,13 @@ const MODULES = [
     active: true,
   },
   {
+    status: 'Disponível',
+    title: 'Compras',
+    description:
+      'Fornecedores e pedidos de compra recebidos por nota, parcial ou total. Excedente, divergência de preço e nota repetida não passam em silêncio.',
+    active: true,
+  },
+  {
     status: 'Planejado',
     title: 'Faturamento',
     description:
@@ -98,7 +106,7 @@ const MODULES = [
     status: 'Planejado',
     title: 'Financeiro',
     description:
-      'Contas a pagar, a receber e fluxo de caixa alimentados pelo que acontece no faturamento e no estoque.',
+      'Contas a pagar geradas pelas notas de compra recebidas, contas a receber pelo faturamento, e o fluxo de caixa dos dois.',
     active: false,
   },
 ]
@@ -108,14 +116,17 @@ const DONE = [
   'Saldo de estoque com chave composta (produto + armazém + lote)',
   'Concorrência otimista (rowversion): duas operações no mesmo lote não se sobrescrevem',
   'Autorização por perfil (Manager e Operator) nas rotas e na interface',
-  'CRUD de produtos e armazéns',
+  'Pedidos de compra com status aberto, parcial, recebido e cancelado, recebidos por nota fiscal',
+  'Recebimento numa unidade de trabalho: nota, status e entradas no estoque gravados juntos ou desfeitos juntos',
+  'CRUD de produtos, armazéns e fornecedores',
   'Login e registro com Identity, token JWT com claims de role',
-  'Validação assíncrona de SKU duplicado antes de gravar',
+  'Validação assíncrona de SKU e CPF/CNPJ duplicados antes de gravar',
   'Erros da API padronizados em ProblemDetails (RFC 7807)',
-  '33 testes automatizados contra SQL Server real, incluindo concorrência',
+  '70 testes automatizados contra SQL Server real, incluindo concorrência e rollback',
 ]
 
 const NEXT = [
+  'Contas a pagar geradas a partir das notas de compra recebidas',
   'Módulo de faturamento consumindo o saldo do estoque',
   'Dashboard financeiro: contas a pagar/receber, fluxo de caixa',
   'Paginação e busca nas listagens',
@@ -141,6 +152,16 @@ const DECISIONS = [
     title: 'Perfil de acesso decidido pelo servidor, não pelo usuário',
     description:
       'No cadastro, o servidor atribui a role Operator; o usuário nunca escolhe o próprio perfil. As rotas conferem a role do token (Manager ou Operator), e a interface esconde botões só por conveniência, nunca como proteção.',
+  },
+  {
+    title: 'Receber uma nota é tudo ou nada',
+    description:
+      'A nota, a quantidade recebida, o status do pedido e as entradas no estoque rodam numa unidade de trabalho. Se qualquer passo falhar, inclusive um que já tinha gravado, nada fica pela metade.',
+  },
+  {
+    title: 'Caso de borda tem regra, não exceção silenciosa',
+    description:
+      'Receber mais que o pedido é recusado. Preço da nota diferente do pedido só entra com motivo. Cancelar depois de receber parte cancela só o pendente, e o que chegou fica no estoque.',
   },
 ]
 
@@ -299,7 +320,7 @@ function LandingPage() {
         <div className="relative mx-auto grid max-w-6xl gap-14 px-6 py-24 sm:py-28 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-12">
           <div>
             <span className="inline-flex items-center rounded-full border border-honey/30 bg-honey/10 px-3 py-1 text-xs font-medium tracking-wide text-honey-light">
-              Controle de estoque multi-armazém
+              Estoque e compras multi-armazém
             </span>
 
             <h1 className="mt-6 text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl">
@@ -308,7 +329,8 @@ function LandingPage() {
 
             <p className="mt-6 max-w-xl text-lg text-cream/70 sm:text-xl">
               ProjectBee centraliza o saldo dos seus produtos por armazém e
-              lote em um só lugar, sempre atualizado.
+              lote em um só lugar, e dá entrada nas compras nota a nota, à
+              medida que a mercadoria chega.
             </p>
 
             <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">
@@ -383,7 +405,7 @@ function LandingPage() {
         spacing="loose"
         className="bg-cream"
       >
-        <div className="mt-14 grid items-start gap-6 md:grid-cols-3">
+        <div className="mt-14 grid items-start gap-6 md:grid-cols-2 lg:grid-cols-4">
           {MODULES.map((mod) => {
             const styles = mod.active
               ? {
