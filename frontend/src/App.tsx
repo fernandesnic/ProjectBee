@@ -9,6 +9,8 @@ import { setNavigator } from './services/navigation'
 import StoragesPage from './pages/StoragesPage'
 import StockPage from './pages/StockPage'
 import SuppliersPage from './pages/SuppliersPage'
+import PurchaseOrdersPage from './pages/PurchaseOrdersPage'
+import PurchaseOrderPage from './pages/PurchaseOrderPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 function NavigatorSetup() {
@@ -34,6 +36,8 @@ function App() {
           <Route path="storages" element={<StoragesPage />} />
           <Route path="suppliers" element={<SuppliersPage />} />
           <Route path="stock" element={<StockPage />} />
+          <Route path="purchases" element={<PurchaseOrdersPage />} />
+          <Route path="purchases/:id" element={<PurchaseOrderPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

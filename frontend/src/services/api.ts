@@ -232,6 +232,7 @@ export type MovementType =
   | 'TransferIn'
   | 'Adjustment'
   | 'OpeningBalance'
+  | 'PurchaseReceipt'
 
 export interface Movement {
   id: string
@@ -298,6 +299,130 @@ export async function registerAdjustment(payload: AdjustmentPayload) {
 
 export async function getMovements(filter: { productId?: string; storageId?: string; batch?: string }) {
   const { data } = await api.get<Movement[]>('/api/movements', { params: filter })
+  return data
+}
+
+export type PurchaseOrderStatus = 'Open' | 'Partial' | 'Received' | 'Cancelled'
+
+export const PURCHASE_STATUS_LABEL: Record<PurchaseOrderStatus, string> = {
+  Open: 'Aberto',
+  Partial: 'Parcial',
+  Received: 'Recebido',
+  Cancelled: 'Cancelado',
+}
+
+export interface PurchaseOrderSummary {
+  id: string
+  number: number
+  status: PurchaseOrderStatus
+  supplierId: string
+  supplierName: string
+  storageId: string
+  storageName: string
+  total: number
+  orderedUnits: number
+  receivedUnits: number
+  createdAt: string
+}
+
+export interface PurchaseOrderItem {
+  id: string
+  productId: string
+  productName: string
+  productSku: string
+  quantity: number
+  receivedQuantity: number
+  unitPrice: number
+}
+
+export interface PurchaseReceiptItem {
+  purchaseOrderItemId: string
+  productName: string
+  batch: string
+  quantity: number
+  unitPrice: number // preço da nota
+  orderedUnitPrice: number
+}
+
+export interface PurchaseReceipt {
+  id: string
+  invoiceNumber: string
+  priceDivergenceReason: string | null
+  createdBy: string
+  createdAt: string
+  items: PurchaseReceiptItem[]
+}
+
+export interface PurchaseOrderDetail {
+  id: string
+  number: number
+  status: PurchaseOrderStatus
+  supplierId: string
+  supplierName: string
+  supplierDocument: string
+  storageId: string
+  storageName: string
+  notes: string | null
+  createdBy: string
+  createdAt: string
+  cancelledBy: string | null
+  cancelledAt: string | null
+  cancelReason: string | null
+  rowVersion: string // base64; volta no recebimento e no cancelamento
+  items: PurchaseOrderItem[]
+  receipts: PurchaseReceipt[]
+}
+
+export interface CreatePurchaseOrderPayload {
+  supplierId: string
+  storageId: string
+  notes: string
+  items: { productId: string; quantity: number; unitPrice: number }[]
+}
+
+export interface ReceivePurchaseOrderPayload {
+  invoiceNumber: string
+  priceDivergenceReason: string | null
+  rowVersion: string
+  items: { purchaseOrderItemId: string; batch: string; quantity: number; unitPrice: number }[]
+}
+
+export interface CancelPurchaseOrderPayload {
+  reason: string
+  rowVersion: string
+}
+
+export function purchaseOrderCode(number: number) {
+  return `PC-${String(number).padStart(6, '0')}`
+}
+
+// Aberto ou parcial: ainda aceita recebimento e cancelamento.
+export function isPending(status: PurchaseOrderStatus) {
+  return status === 'Open' || status === 'Partial'
+}
+
+export async function getPurchaseOrders() {
+  const { data } = await api.get<PurchaseOrderSummary[]>('/api/purchase-orders')
+  return data
+}
+
+export async function getPurchaseOrder(id: string) {
+  const { data } = await api.get<PurchaseOrderDetail>(`/api/purchase-orders/${id}`)
+  return data
+}
+
+export async function createPurchaseOrder(payload: CreatePurchaseOrderPayload) {
+  const { data } = await api.post<PurchaseOrderDetail>('/api/purchase-orders', payload)
+  return data
+}
+
+export async function receivePurchaseOrder(id: string, payload: ReceivePurchaseOrderPayload) {
+  const { data } = await api.post<PurchaseOrderDetail>(`/api/purchase-orders/${id}/receipts`, payload)
+  return data
+}
+
+export async function cancelPurchaseOrder(id: string, payload: CancelPurchaseOrderPayload) {
+  const { data } = await api.post<PurchaseOrderDetail>(`/api/purchase-orders/${id}/cancel`, payload)
   return data
 }
 

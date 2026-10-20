@@ -37,6 +37,10 @@ const NAV_GROUPS: NavGroup[] = [
     children: [{ to: '/app/stock', label: 'Saldos' }],
   },
   {
+    label: 'Compras',
+    children: [{ to: '/app/purchases', label: 'Pedidos de compra' }],
+  },
+  {
     label: 'Faturamento',
     children: [{ label: 'Notas' }, { label: 'Emissão' }],
   },

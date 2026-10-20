@@ -9,6 +9,7 @@ const TYPE_LABEL: Record<MovementType, string> = {
   TransferIn: 'Transferência recebida',
   Adjustment: 'Ajuste',
   OpeningBalance: 'Saldo inicial',
+  PurchaseReceipt: 'Recebimento de compra',
 }
 
 interface MovementHistoryProps {
