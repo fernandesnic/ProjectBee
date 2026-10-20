@@ -1,6 +1,6 @@
 # 🐝 ProjectBee
 
-**Sistema de controle de estoque multi-armazém, com livro-razão de movimentações, rastreabilidade por lote e autenticação por perfil de acesso.**
+**Mini-ERP de estoque multi-armazém e compras, com livro-razão de movimentações, rastreabilidade por lote, recebimento de notas numa unidade de trabalho e autenticação por perfil de acesso.**
 
 ![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)
 ![C#](https://img.shields.io/badge/C%23-14-239120)
@@ -18,9 +18,11 @@ Trabalhando com ERPs legados, percebi que a maior parte da complexidade não est
 
 O saldo não é editado: ele é **consequência do histórico**. Toda mudança de estoque entra como um movimento (entrada, saída, transferência ou ajuste), gravado na mesma transação que atualiza o saldo. Não existe outro caminho de escrita. Por isso dá para provar, com uma query, que o saldo de cada lote é exatamente a soma dos seus movimentos — e há testes automatizados garantindo que isso continua verdade mesmo com requisições simultâneas.
 
-O foco do projeto não é quantidade de endpoints, e sim modelagem correta: chave composta, livro-razão, concorrência otimista, integridade referencial validada antes da persistência, contratos de entrada e saída separados das entidades, autorização por perfil (não por auto-atribuição) e erros padronizados em RFC 7807.
+O segundo módulo é o de **compras**, que é por onde o estoque recebe mercadoria. Fornecedores, pedidos de compra que mudam de status ao longo do tempo (aberto, parcial, recebido, cancelado) e recebimento por nota fiscal, parcial ou total. Cada nota entra numa unidade de trabalho: nota, quantidades recebidas, status do pedido e entradas no estoque são gravados juntos ou não são gravados. Os casos de borda que costumam virar furo num ERP têm regra explícita: recebimento maior que o pedido, cancelamento depois de receber parte, preço da nota diferente do pedido e a mesma nota lançada duas vezes.
 
-Este é o primeiro módulo de um mini-ERP maior — faturamento e financeiro estão planejados como próximos módulos.
+O foco do projeto não é quantidade de endpoints, e sim modelagem correta: chave composta, livro-razão, concorrência otimista, unit of work, integridade referencial validada antes da persistência, contratos de entrada e saída separados das entidades, autorização por perfil (não por auto-atribuição) e erros padronizados em RFC 7807.
+
+Faturamento e financeiro estão planejados como próximos módulos. O recebimento de compras já deixa o ponto de extensão pronto para gerar as contas a pagar.
 
 ---
 
@@ -401,7 +403,7 @@ dotnet run
 
 A API sobe em `http://localhost:5054`. O Swagger fica em **http://localhost:5054/swagger** e o health check em **http://localhost:5054/health** (verifica também a conexão com o banco, respondendo `503` se o SQL Server estiver inacessível).
 
-No primeiro boot com a base vazia, produtos, armazéns e saldos de demonstração são semeados automaticamente — as três telas já sobem com dado real para navegar.
+No primeiro boot com a base vazia, produtos, armazéns e saldos de demonstração são semeados automaticamente — as telas já sobem com dado real para navegar. Fornecedores de demonstração têm checagem própria: bancos criados antes do módulo de compras também os recebem no próximo boot.
 
 > As origens de CORS são lidas de `Cors:AllowedOrigins` no `appsettings.json` — já configurado para `http://localhost:5173` em desenvolvimento.
 
@@ -442,7 +444,7 @@ O frontend sobe em `http://localhost:5173` e aponta para `http://localhost:5054`
 - [ ] Docker Compose e CI no GitHub Actions (rodando os testes contra um SQL Server em container)
 - [ ] Soft delete nas listagens
 - [ ] Rate limiting e log de auditoria (o livro-razão já audita o estoque; falta o resto do sistema)
-- [ ] Segundo módulo do mini-ERP: faturamento
+- [ ] Próximo módulo do mini-ERP: faturamento
 
 ### Limitação conhecida
 
