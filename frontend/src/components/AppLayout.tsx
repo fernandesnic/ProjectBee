@@ -201,7 +201,8 @@ function AppLayout() {
         </nav>
       </aside>
 
-      <div className="flex-1">
+      {/* min-w-0: sem isso, conteúdo largo (uma linha de filtros que rola) alarga a página inteira no celular */}
+      <div className="min-w-0 flex-1">
         <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <button

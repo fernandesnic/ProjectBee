@@ -57,13 +57,13 @@ function PurchaseOrdersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-ink">Pedidos de compra</h1>
         {canManage && !creating && (
           <button
             ref={newButtonRef}
             onClick={() => setCreating(true)}
-            className="rounded-full bg-honey px-5 py-2 text-sm font-semibold text-hive transition hover:bg-honey-light"
+            className="h-11 rounded-full bg-honey px-5 text-sm font-semibold text-hive transition hover:bg-honey-light sm:h-auto sm:py-2"
           >
             Novo pedido
           </button>
