@@ -62,6 +62,8 @@ public class SalesOrderEndpointTests : IClassFixture<ApiFactory>
         Assert.Equal("Pending", boleto.GetProperty("status").GetString());
         Assert.Equal(30m, boleto.GetProperty("amount").GetDecimal());
         Assert.Equal(47, boleto.GetProperty("digitableLine").GetString()!.Length);
+        var todayInBrasilia = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "America/Sao_Paulo"));
+        Assert.Equal(todayInBrasilia.AddDays(3), DateOnly.Parse(boleto.GetProperty("dueDate").GetString()!));
         Assert.Equal(JsonValueKind.Null, order.GetProperty("invoice").ValueKind);
 
         // Pedido não mexe no estoque: a baixa só acontece na nota.
