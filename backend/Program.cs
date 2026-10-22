@@ -85,6 +85,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<UnitOfWork>();
 builder.Services.AddScoped<StockMovementService>();
 builder.Services.AddScoped<PurchaseService>();
+builder.Services.AddScoped<SalesService>();
 
 builder.Services.AddSingleton<TokenService>();
 
