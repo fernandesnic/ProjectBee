@@ -167,7 +167,13 @@ function SalesOrderPage() {
         <section className="mt-6 rounded-2xl border border-line bg-cream-soft p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-ink">Boleto</h2>
           <div className="mt-3">
-            <BoletoCard boleto={order.boleto} onPay={canManage ? handlePay : undefined} paying={paying} />
+            <BoletoCard
+              boleto={order.boleto}
+              salesOrderId={order.id}
+              salesOrderNumber={order.number}
+              onPay={canManage ? handlePay : undefined}
+              paying={paying}
+            />
           </div>
         </section>
       )}

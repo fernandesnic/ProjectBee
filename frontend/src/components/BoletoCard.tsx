@@ -1,17 +1,33 @@
 import { useState } from 'react'
-import { formatDigitableLine, type Boleto } from '../services/api'
+import { downloadBoletoPdf, formatDigitableLine, type Boleto } from '../services/api'
 import { formatDate, formatDateTime } from '../services/date'
 import { formatCurrency } from '../services/price'
 
 interface BoletoCardProps {
   boleto: Boleto
+  salesOrderId: string
+  salesOrderNumber: number
   onPay?: () => void // ausente: o perfil não pode simular o pagamento
   paying?: boolean
 }
 
-export function BoletoCard({ boleto, onPay, paying = false }: BoletoCardProps) {
+export function BoletoCard({ boleto, salesOrderId, salesOrderNumber, onPay, paying = false }: BoletoCardProps) {
   const [copied, setCopied] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
   const isPaid = boleto.status === 'Paid'
+
+  async function downloadPdf() {
+    setDownloadError(null)
+    setDownloading(true)
+    try {
+      await downloadBoletoPdf(salesOrderId, salesOrderNumber)
+    } catch {
+      setDownloadError('Não foi possível gerar o PDF do boleto.')
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   async function copyLine() {
     try {
@@ -62,13 +78,28 @@ export function BoletoCard({ boleto, onPay, paying = false }: BoletoCardProps) {
         <p className="mt-1 break-words font-mono text-sm tabular-nums text-ink sm:text-base">
           {formatDigitableLine(boleto.digitableLine)}
         </p>
-        <button
-          type="button"
-          onClick={copyLine}
-          className="mt-3 h-11 w-full rounded-full border border-line px-4 text-sm font-medium text-ink transition hover:border-honey-dark hover:text-honey-dark sm:h-auto sm:w-auto sm:py-1.5"
-        >
-          {copied ? 'Copiado ✓' : 'Copiar linha digitável'}
-        </button>
+        <div className="mt-3 grid gap-2 sm:flex">
+          <button
+            type="button"
+            onClick={copyLine}
+            className="h-11 rounded-full border border-line px-4 text-sm font-medium text-ink transition hover:border-honey-dark hover:text-honey-dark sm:h-auto sm:py-1.5"
+          >
+            {copied ? 'Copiado ✓' : 'Copiar linha digitável'}
+          </button>
+          <button
+            type="button"
+            onClick={downloadPdf}
+            disabled={downloading}
+            className="h-11 rounded-full border border-line px-4 text-sm font-medium text-ink transition hover:border-honey-dark hover:text-honey-dark disabled:opacity-60 sm:h-auto sm:py-1.5"
+          >
+            {downloading ? 'Gerando PDF...' : 'Baixar PDF'}
+          </button>
+        </div>
+        {downloadError && (
+          <p className="mt-2 text-xs text-danger" role="alert">
+            {downloadError}
+          </p>
+        )}
       </div>
 
       {!isPaid && onPay && (

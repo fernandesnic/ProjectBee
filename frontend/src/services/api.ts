@@ -574,6 +574,18 @@ export async function createSalesOrder(payload: CreateSalesOrderPayload) {
   return data
 }
 
+// O PDF passa pelo axios (e não por um link direto) porque a rota exige o token no header.
+export async function downloadBoletoPdf(salesOrderId: string, salesOrderNumber: number) {
+  const { data } = await api.get<Blob>(`/api/sales-orders/${salesOrderId}/boleto/pdf`, { responseType: 'blob' })
+  const url = URL.createObjectURL(data)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `boleto-${salesOrderCode(salesOrderNumber)}.pdf`
+  link.click()
+  // O clique já começou o download; liberar a URL na hora cancelaria em alguns navegadores.
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 export async function payBoleto(id: string, rowVersion: string) {
   const { data } = await api.post<SalesOrderDetail>(`/api/sales-orders/${id}/boleto/payment`, { rowVersion })
   return data
