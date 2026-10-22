@@ -10,6 +10,19 @@
 
 **🔗 [Ver demo online](https://project-bee-xi.vercel.app/)** — clique em *Entrar na demo* para acessar com o login já preenchido.
 
+### Destaques
+
+- **Saldo é consequência do histórico:** todo movimento entra no livro-razão na mesma transação que atualiza o saldo, e uma query prova que as duas coisas batem.
+- **Concorrência tratada:** `rowversion` + `409`, com testes de rajada de requisições simultâneas.
+- **Compras com casos de borda:** recebimento parcial, excedente, divergência de preço, nota duplicada e cancelamento do pendente, tudo numa unidade de trabalho.
+- **Acesso por perfil:** `Manager` e `Operator`, com a UI e a API respeitando o perfil.
+- **70 testes** contra SQL Server real (não InMemory).
+- **No ar:** frontend na Vercel, API em container Docker no Azure e banco no Azure SQL.
+
+### Índice
+
+[Sobre](#sobre) · [Stack](#stack) · [Modelo de dados](#modelo-de-dados) · [Livro-razão](#livro-razão) · [Autenticação](#autenticação-e-perfis-de-acesso) · [Endpoints](#endpoints) · [Regras de negócio](#regras-de-negócio-implementadas) · [Decisões técnicas](#decisões-técnicas) · [Testes](#testes) · [Telas](#telas) · [Estrutura](#estrutura) · [Executando localmente](#executando-localmente) · [Roadmap](#roadmap)
+
 ---
 
 ## Sobre
@@ -434,6 +447,7 @@ O frontend sobe em `http://localhost:5173` e aponta para `http://localhost:5054`
 - [x] Módulo de compras: fornecedores, pedidos com recebimento parcial ou total por nota, cancelamento do pendente e divergência de preço, numa unidade de trabalho
 
 **Próximo**
+- [ ] CI no GitHub Actions, rodando os testes contra um SQL Server em container
 - [ ] Devolver `409` também quando duas entradas simultâneas criam o mesmo lote novo
 - [ ] `GET /api/stock/summary` — agregação de valor no banco (`SUM(Price * Balance)`) em vez de somar no cliente
 - [ ] Paginação e busca nas listagens
@@ -441,7 +455,7 @@ O frontend sobe em `http://localhost:5173` e aponta para `http://localhost:5054`
 - [ ] Editar itens de um pedido ainda sem recebimento (hoje o caminho é cancelar e criar outro)
 
 **Depois**
-- [ ] Docker Compose e CI no GitHub Actions (rodando os testes contra um SQL Server em container)
+- [ ] Docker Compose para subir API e banco com um comando
 - [ ] Soft delete nas listagens
 - [ ] Rate limiting e log de auditoria (o livro-razão já audita o estoque; falta o resto do sistema)
 - [ ] Próximo módulo do mini-ERP: faturamento
