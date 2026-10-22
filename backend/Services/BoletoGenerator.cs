@@ -43,6 +43,12 @@ public static class BoletoGenerator
             .ToString();
     }
 
+    // Código de barras (44) remontado da linha digitável guardada: banco e moeda, DV geral, fator e
+    // valor, e o campo livre sem os três DVs de campo. É o que vai impresso nas barras do boleto.
+    public static string BarcodeFromDigitableLine(string digitableLine) =>
+        digitableLine[..4] + digitableLine[32] + digitableLine[33..] +
+        digitableLine[4..9] + digitableLine[10..20] + digitableLine[21..31];
+
     // 47 dígitos agrupados como o banco imprime: AAAAA.AAAAA BBBBB.BBBBBB CCCCC.CCCCCC D FFFFVVVVVVVVVV
     public static string Format(string digitableLine) =>
         $"{digitableLine[..5]}.{digitableLine[5..10]} " +
