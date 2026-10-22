@@ -157,6 +157,13 @@ public class SalesService
             if (!order.Storage.IsActive || order.Storage.DeletedAt != null)
                 return SalesResult.Fail($"O armazém {order.Storage.Name} está inativo e não pode expedir mercadoria. Reative-o antes de emitir a nota.");
 
+            // O pedido é gravado primeiro, com o RowVersion lido no WHERE: duas emissões simultâneas
+            // disputam essa linha, e a segunda espera o lock e sai com 409. Se a nota fosse inserida
+            // antes, a segunda bateria no índice único da nota e terminaria em 500.
+            order.Status = SalesOrderStatus.Invoiced;
+            order.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
             var invoice = new SalesInvoice
             {
                 SalesOrderId = order.Id,
@@ -194,9 +201,6 @@ public class SalesService
             }
 
             _db.SalesInvoices.Add(invoice);
-            order.Status = SalesOrderStatus.Invoiced;
-            order.UpdatedAt = DateTime.UtcNow;
-
             await _db.SaveChangesAsync();
             return SalesResult.Ok(invoice.Id);
         });
