@@ -12,6 +12,8 @@ import SuppliersPage from './pages/SuppliersPage'
 import CustomersPage from './pages/CustomersPage'
 import PurchaseOrdersPage from './pages/PurchaseOrdersPage'
 import PurchaseOrderPage from './pages/PurchaseOrderPage'
+import SalesOrdersPage from './pages/SalesOrdersPage'
+import SalesOrderPage from './pages/SalesOrderPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 function NavigatorSetup() {
@@ -40,6 +42,8 @@ function App() {
           <Route path="stock" element={<StockPage />} />
           <Route path="purchases" element={<PurchaseOrdersPage />} />
           <Route path="purchases/:id" element={<PurchaseOrderPage />} />
+          <Route path="sales" element={<SalesOrdersPage />} />
+          <Route path="sales/:id" element={<SalesOrderPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

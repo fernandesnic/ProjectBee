@@ -42,7 +42,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: 'Faturamento',
-    children: [{ label: 'Notas' }, { label: 'Emissão' }],
+    children: [{ to: '/app/sales', label: 'Pedidos de venda' }],
   },
   {
     label: 'Financeiro',

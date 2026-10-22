@@ -8,3 +8,10 @@ export function parseUtc(value: string) {
 export function formatDateTime(value: string) {
   return dateTimeFormat.format(parseUtc(value))
 }
+
+const dateFormat = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeZone: 'UTC' })
+
+// Data sem hora (AAAA-MM-DD), como o vencimento do boleto: lida em UTC para não voltar um dia no Brasil.
+export function formatDate(value: string) {
+  return dateFormat.format(new Date(`${value}T00:00:00Z`))
+}

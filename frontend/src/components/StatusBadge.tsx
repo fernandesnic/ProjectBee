@@ -1,4 +1,23 @@
-import { PURCHASE_STATUS_LABEL, type PurchaseOrderStatus } from '../services/api'
+import {
+  PURCHASE_STATUS_LABEL,
+  SALES_STATUS_LABEL,
+  type PurchaseOrderStatus,
+  type SalesOrderStatus,
+} from '../services/api'
+
+const SALES_STATUS_CLASS: Record<SalesOrderStatus, string> = {
+  AwaitingPayment: 'bg-honey-light/60 text-ink',
+  Paid: 'bg-honey/15 text-honey-text',
+  Invoiced: 'bg-ink/10 text-ink',
+}
+
+export function SalesStatusBadge({ status }: { status: SalesOrderStatus }) {
+  return (
+    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${SALES_STATUS_CLASS[status]}`}>
+      {SALES_STATUS_LABEL[status]}
+    </span>
+  )
+}
 
 const PURCHASE_STATUS_CLASS: Record<PurchaseOrderStatus, string> = {
   Open: 'bg-honey/15 text-honey-text',

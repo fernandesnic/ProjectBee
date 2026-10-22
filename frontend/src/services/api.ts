@@ -470,6 +470,152 @@ export async function cancelPurchaseOrder(id: string, payload: CancelPurchaseOrd
   return data
 }
 
+export type SalesOrderStatus = 'AwaitingPayment' | 'Paid' | 'Invoiced'
+
+export const SALES_STATUS_LABEL: Record<SalesOrderStatus, string> = {
+  AwaitingPayment: 'Aguardando pagamento',
+  Paid: 'Pago',
+  Invoiced: 'Faturado',
+}
+
+export type PaymentMethod = 'Boleto' | 'Pix' | 'CreditCard'
+
+export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+  Boleto: 'Boleto',
+  Pix: 'Pix',
+  CreditCard: 'Cartão de crédito',
+}
+
+export interface SalesOrderSummary {
+  id: string
+  number: number
+  status: SalesOrderStatus
+  paymentMethod: PaymentMethod
+  customerId: string
+  customerName: string
+  storageId: string
+  storageName: string
+  total: number
+  units: number
+  createdAt: string
+}
+
+export interface SalesOrderItem {
+  id: string
+  productId: string
+  productName: string
+  productSku: string
+  quantity: number
+  unitPrice: number
+}
+
+export interface Boleto {
+  id: string
+  ourNumber: string
+  digitableLine: string // 47 dígitos, sem pontuação
+  amount: number
+  dueDate: string // AAAA-MM-DD
+  status: 'Pending' | 'Paid'
+  createdAt: string
+  paidBy: string | null
+  paidAt: string | null
+}
+
+export interface SalesOrderDetail {
+  id: string
+  number: number
+  status: SalesOrderStatus
+  paymentMethod: PaymentMethod
+  customerId: string
+  customerName: string
+  customerDocument: string
+  storageId: string
+  storageName: string
+  notes: string | null
+  createdBy: string
+  createdAt: string
+  rowVersion: string // base64; volta no pagamento e no faturamento
+  items: SalesOrderItem[]
+  boleto: Boleto | null
+  invoice: { id: string; number: number; createdAt: string } | null
+}
+
+export interface CreateSalesOrderPayload {
+  customerId: string
+  storageId: string
+  paymentMethod: PaymentMethod
+  notes: string
+  items: { productId: string; quantity: number }[]
+}
+
+export function salesOrderCode(number: number) {
+  return `PV-${String(number).padStart(6, '0')}`
+}
+
+// Agrupada como no boleto impresso: AAAAA.AAAAA BBBBB.BBBBBB CCCCC.CCCCCC D FFFFVVVVVVVVVV
+export function formatDigitableLine(line: string) {
+  if (line.length !== 47) return line
+  return `${line.slice(0, 5)}.${line.slice(5, 10)} ${line.slice(10, 15)}.${line.slice(15, 21)} ${line.slice(21, 26)}.${line.slice(26, 32)} ${line[32]} ${line.slice(33)}`
+}
+
+export async function getSalesOrders(status?: SalesOrderStatus) {
+  const { data } = await api.get<SalesOrderSummary[]>('/api/sales-orders', { params: { status } })
+  return data
+}
+
+export async function getSalesOrder(id: string) {
+  const { data } = await api.get<SalesOrderDetail>(`/api/sales-orders/${id}`)
+  return data
+}
+
+export async function createSalesOrder(payload: CreateSalesOrderPayload) {
+  const { data } = await api.post<SalesOrderDetail>('/api/sales-orders', payload)
+  return data
+}
+
+export async function payBoleto(id: string, rowVersion: string) {
+  const { data } = await api.post<SalesOrderDetail>(`/api/sales-orders/${id}/boleto/payment`, { rowVersion })
+  return data
+}
+
+export interface InvoiceItem {
+  productId: string
+  productName: string
+  productSku: string
+  batch: string
+  quantity: number
+  unitPrice: number
+}
+
+export interface Invoice {
+  id: string
+  number: number
+  salesOrderId: string
+  salesOrderNumber: number
+  customerId: string
+  customerName: string
+  customerDocument: string
+  storageName: string
+  total: number
+  createdBy: string
+  createdAt: string
+  items: InvoiceItem[]
+}
+
+export function invoiceCode(number: number) {
+  return `NF-${String(number).padStart(6, '0')}`
+}
+
+export async function getInvoices() {
+  const { data } = await api.get<Invoice[]>('/api/invoices')
+  return data
+}
+
+export async function createInvoice(salesOrderId: string, rowVersion: string) {
+  const { data } = await api.post<Invoice>('/api/invoices', { salesOrderId, rowVersion })
+  return data
+}
+
 // Acorda a API em segundo plano (cold start). Não espera resposta e ignora erro.
 export function wakeUpApi(): void {
   fetch(`${API_BASE_URL}/health`).catch(() => {})
