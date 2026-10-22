@@ -86,7 +86,8 @@ public enum MovementType
     TransferIn = 4,   // Transferência - entra no destino (DE4)
     Adjustment = 5,     // Ajuste de inventário
     OpeningBalance = 6, // Saldo inicial (implantação do livro-razão)
-    PurchaseReceipt = 7 // Entrada pelo recebimento de um pedido de compra
+    PurchaseReceipt = 7, // Entrada pelo recebimento de um pedido de compra
+    SalesInvoice = 8     // Saída pela nota fiscal de um pedido de venda
 }
 
 public class StockMovement
@@ -104,6 +105,7 @@ public class StockMovement
     public string? Reason { get; set; }        // obrigatório só no Ajuste
     public Guid? TransferId { get; set; }      // liga o par da transferência
     public Guid? PurchaseReceiptId { get; set; } // recebimento (nota) que originou a entrada
+    public Guid? SalesInvoiceId { get; set; }    // nota de venda que originou a saída
 
     public string CreatedBy { get; set; } = string.Empty; // e-mail do usuário
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -173,4 +175,94 @@ public class PurchaseReceiptItem
     public string Batch { get; set; } = string.Empty;
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }     // preço da nota, que pode diferir do pedido
+}
+
+public enum PaymentMethod
+{
+    Boleto = 1,
+    Pix = 2,        // planejado
+    CreditCard = 3  // planejado
+}
+
+public enum SalesOrderStatus
+{
+    AwaitingPayment = 1, // Aguardando pagamento: boleto emitido, ainda não pago
+    Paid = 2,            // Pago: liberado para emitir a nota
+    Invoiced = 3         // Faturado: nota emitida e mercadoria baixada do estoque
+}
+
+public class SalesOrder
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public int Number { get; set; }            // número sequencial, gerado pelo banco
+    public Guid CustomerId { get; set; }
+    public Customer Customer { get; set; } = null!;
+    public Guid StorageId { get; set; }        // armazém de onde a mercadoria sai
+    public Storage Storage { get; set; } = null!;
+    public PaymentMethod PaymentMethod { get; set; }
+    public SalesOrderStatus Status { get; set; } = SalesOrderStatus.AwaitingPayment;
+    public string? Notes { get; set; }
+
+    public List<SalesOrderItem> Items { get; set; } = [];
+    public Boleto? Boleto { get; set; }
+    public SalesInvoice? Invoice { get; set; }
+
+    public string CreatedBy { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public byte[] RowVersion { get; set; } = null!; // pagar e faturar ao mesmo tempo: o segundo recebe 409
+}
+
+public class SalesOrderItem
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid SalesOrderId { get; set; }
+    public Guid ProductId { get; set; }
+    public Product Product { get; set; } = null!;
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }     // preço do produto no momento do pedido
+}
+
+public enum BoletoStatus
+{
+    Pending = 1, // emitido, aguardando pagamento
+    Paid = 2     // pago (na demo, pela simulação de retorno do banco)
+}
+
+// Boleto simulado: a linha digitável segue o formato FEBRABAN, mas não é registrada em banco nenhum.
+public class Boleto
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid SalesOrderId { get; set; }
+    public string OurNumber { get; set; } = string.Empty;     // "nosso número": identifica o boleto no banco
+    public string DigitableLine { get; set; } = string.Empty; // 47 dígitos, sem a pontuação
+    public decimal Amount { get; set; }
+    public DateOnly DueDate { get; set; }
+    public BoletoStatus Status { get; set; } = BoletoStatus.Pending;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public string? PaidBy { get; set; }
+    public DateTime? PaidAt { get; set; }
+}
+
+// Nota fiscal de saída. É dela que sai a baixa no estoque, lote a lote.
+public class SalesInvoice
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public int Number { get; set; }            // número sequencial da nota, gerado pelo banco
+    public Guid SalesOrderId { get; set; }
+    public SalesOrder SalesOrder { get; set; } = null!;
+    public List<SalesInvoiceItem> Items { get; set; } = [];
+    public string CreatedBy { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class SalesInvoiceItem
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid SalesInvoiceId { get; set; }
+    public Guid ProductId { get; set; }
+    public Product Product { get; set; } = null!;
+    public string Batch { get; set; } = string.Empty; // um item do pedido pode sair de mais de um lote
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
 }

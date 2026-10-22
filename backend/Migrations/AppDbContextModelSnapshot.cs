@@ -224,6 +224,56 @@ namespace ProjectBee.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("ProjectBee.Models.Boleto", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("decimal(14,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DigitableLine")
+                        .IsRequired()
+                        .HasMaxLength(47)
+                        .HasColumnType("nvarchar(47)");
+
+                    b.Property<DateOnly>("DueDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("OurNumber")
+                        .IsRequired()
+                        .HasMaxLength(17)
+                        .HasColumnType("nvarchar(17)");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PaidBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<Guid>("SalesOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OurNumber")
+                        .IsUnique();
+
+                    b.HasIndex("SalesOrderId")
+                        .IsUnique();
+
+                    b.ToTable("Boletos");
+                });
+
             modelBuilder.Entity("ProjectBee.Models.Customer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -492,6 +542,161 @@ namespace ProjectBee.Migrations
                     b.ToTable("PurchaseReceiptItem");
                 });
 
+            modelBuilder.Entity("ProjectBee.Models.SalesInvoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<int>("Number")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Number"));
+
+                    b.Property<Guid>("SalesOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("SalesOrderId")
+                        .IsUnique();
+
+                    b.ToTable("SalesInvoices");
+                });
+
+            modelBuilder.Entity("ProjectBee.Models.SalesInvoiceItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Batch")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SalesInvoiceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("decimal(14,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("SalesInvoiceId");
+
+                    b.ToTable("SalesInvoiceItem");
+                });
+
+            modelBuilder.Entity("ProjectBee.Models.SalesOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("Number")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Number"));
+
+                    b.Property<int>("PaymentMethod")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("StorageId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("StorageId");
+
+                    b.ToTable("SalesOrders");
+                });
+
+            modelBuilder.Entity("ProjectBee.Models.SalesOrderItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SalesOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("decimal(14,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("SalesOrderId", "ProductId")
+                        .IsUnique();
+
+                    b.ToTable("SalesOrderItem");
+                });
+
             modelBuilder.Entity("ProjectBee.Models.StockBalance", b =>
                 {
                     b.Property<Guid>("ProductId")
@@ -551,6 +756,9 @@ namespace ProjectBee.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
 
+                    b.Property<Guid?>("SalesInvoiceId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("StorageId")
                         .HasColumnType("uniqueidentifier");
 
@@ -563,6 +771,8 @@ namespace ProjectBee.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("PurchaseReceiptId");
+
+                    b.HasIndex("SalesInvoiceId");
 
                     b.HasIndex("StorageId");
 
@@ -729,6 +939,15 @@ namespace ProjectBee.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ProjectBee.Models.Boleto", b =>
+                {
+                    b.HasOne("ProjectBee.Models.SalesOrder", null)
+                        .WithOne("Boleto")
+                        .HasForeignKey("ProjectBee.Models.Boleto", "SalesOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ProjectBee.Models.PurchaseOrder", b =>
                 {
                     b.HasOne("ProjectBee.Models.Storage", "Storage")
@@ -793,6 +1012,70 @@ namespace ProjectBee.Migrations
                     b.Navigation("PurchaseOrderItem");
                 });
 
+            modelBuilder.Entity("ProjectBee.Models.SalesInvoice", b =>
+                {
+                    b.HasOne("ProjectBee.Models.SalesOrder", "SalesOrder")
+                        .WithOne("Invoice")
+                        .HasForeignKey("ProjectBee.Models.SalesInvoice", "SalesOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SalesOrder");
+                });
+
+            modelBuilder.Entity("ProjectBee.Models.SalesInvoiceItem", b =>
+                {
+                    b.HasOne("ProjectBee.Models.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ProjectBee.Models.SalesInvoice", null)
+                        .WithMany("Items")
+                        .HasForeignKey("SalesInvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("ProjectBee.Models.SalesOrder", b =>
+                {
+                    b.HasOne("ProjectBee.Models.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ProjectBee.Models.Storage", "Storage")
+                        .WithMany()
+                        .HasForeignKey("StorageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Storage");
+                });
+
+            modelBuilder.Entity("ProjectBee.Models.SalesOrderItem", b =>
+                {
+                    b.HasOne("ProjectBee.Models.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ProjectBee.Models.SalesOrder", null)
+                        .WithMany("Items")
+                        .HasForeignKey("SalesOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("ProjectBee.Models.StockBalance", b =>
                 {
                     b.HasOne("ProjectBee.Models.Product", "Product")
@@ -825,6 +1108,11 @@ namespace ProjectBee.Migrations
                         .HasForeignKey("PurchaseReceiptId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("ProjectBee.Models.SalesInvoice", null)
+                        .WithMany()
+                        .HasForeignKey("SalesInvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ProjectBee.Models.Storage", "Storage")
                         .WithMany()
                         .HasForeignKey("StorageId")
@@ -845,6 +1133,20 @@ namespace ProjectBee.Migrations
 
             modelBuilder.Entity("ProjectBee.Models.PurchaseReceipt", b =>
                 {
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("ProjectBee.Models.SalesInvoice", b =>
+                {
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("ProjectBee.Models.SalesOrder", b =>
+                {
+                    b.Navigation("Boleto");
+
+                    b.Navigation("Invoice");
+
                     b.Navigation("Items");
                 });
 #pragma warning restore 612, 618

@@ -21,6 +21,9 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
     public DbSet<PurchaseOrderItem> PurchaseOrderItems => Set<PurchaseOrderItem>();
     public DbSet<PurchaseReceipt> PurchaseReceipts => Set<PurchaseReceipt>();
+    public DbSet<SalesOrder> SalesOrders => Set<SalesOrder>();
+    public DbSet<Boleto> Boletos => Set<Boleto>();
+    public DbSet<SalesInvoice> SalesInvoices => Set<SalesInvoice>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
 {
     base.OnModelCreating(modelBuilder);
@@ -82,6 +85,10 @@ public class AppDbContext : IdentityDbContext<AppUser>
 
         e.HasOne<PurchaseReceipt>().WithMany()
             .HasForeignKey(x => x.PurchaseReceiptId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        e.HasOne<SalesInvoice>().WithMany()
+            .HasForeignKey(x => x.SalesInvoiceId)
             .OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -146,6 +153,82 @@ public class AppDbContext : IdentityDbContext<AppUser>
 
         e.HasOne(x => x.PurchaseOrderItem).WithMany()
             .HasForeignKey(x => x.PurchaseOrderItemId)
+            .OnDelete(DeleteBehavior.Restrict);
+    });
+
+    modelBuilder.Entity<SalesOrder>(e =>
+    {
+        // Número legível do pedido (PV-000123), gerado pelo banco como o do pedido de compra.
+        e.Property(x => x.Number).UseIdentityColumn();
+        e.Property(x => x.Number).Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
+        e.HasIndex(x => x.Number).IsUnique();
+        e.HasIndex(x => x.Status);
+
+        e.Property(x => x.Notes).HasMaxLength(500);
+        e.Property(x => x.CreatedBy).HasMaxLength(256);
+        e.Property(x => x.RowVersion).IsRowVersion();
+
+        e.HasOne(x => x.Customer).WithMany()
+            .HasForeignKey(x => x.CustomerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        e.HasOne(x => x.Storage).WithMany()
+            .HasForeignKey(x => x.StorageId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        e.HasMany(x => x.Items).WithOne()
+            .HasForeignKey(x => x.SalesOrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Um boleto e uma nota por pedido: o índice único impede faturar o mesmo pedido duas vezes.
+        e.HasOne(x => x.Boleto).WithOne()
+            .HasForeignKey<Boleto>(x => x.SalesOrderId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        e.HasOne(x => x.Invoice).WithOne(x => x.SalesOrder)
+            .HasForeignKey<SalesInvoice>(x => x.SalesOrderId)
+            .OnDelete(DeleteBehavior.Restrict);
+    });
+
+    modelBuilder.Entity<SalesOrderItem>(e =>
+    {
+        e.Property(x => x.UnitPrice).HasPrecision(14, 2);
+        e.HasIndex(x => new { x.SalesOrderId, x.ProductId }).IsUnique();
+
+        e.HasOne(x => x.Product).WithMany()
+            .HasForeignKey(x => x.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
+    });
+
+    modelBuilder.Entity<Boleto>(e =>
+    {
+        e.Property(x => x.OurNumber).HasMaxLength(17);
+        e.HasIndex(x => x.OurNumber).IsUnique();
+        e.Property(x => x.DigitableLine).HasMaxLength(47);
+        e.Property(x => x.Amount).HasPrecision(14, 2);
+        e.Property(x => x.PaidBy).HasMaxLength(256);
+    });
+
+    modelBuilder.Entity<SalesInvoice>(e =>
+    {
+        // Número da nota (NF-000123): sequencial e sem repetição, gerado pelo banco.
+        e.Property(x => x.Number).UseIdentityColumn();
+        e.Property(x => x.Number).Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
+        e.HasIndex(x => x.Number).IsUnique();
+        e.Property(x => x.CreatedBy).HasMaxLength(256);
+
+        e.HasMany(x => x.Items).WithOne()
+            .HasForeignKey(x => x.SalesInvoiceId)
+            .OnDelete(DeleteBehavior.Cascade);
+    });
+
+    modelBuilder.Entity<SalesInvoiceItem>(e =>
+    {
+        e.Property(x => x.Batch).HasMaxLength(30);
+        e.Property(x => x.UnitPrice).HasPrecision(14, 2);
+
+        e.HasOne(x => x.Product).WithMany()
+            .HasForeignKey(x => x.ProductId)
             .OnDelete(DeleteBehavior.Restrict);
     });
     }
