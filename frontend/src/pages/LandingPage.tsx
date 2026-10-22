@@ -46,6 +46,11 @@ const STACK_DECISIONS = [
     reason:
       'Frontend consumindo a API como qualquer outro cliente, sem acoplar interface ao backend.',
   },
+  {
+    tech: 'QuestPDF',
+    reason:
+      'O boleto em PDF é desenhado em C#, com o código de barras gerado pelo próprio projeto, sem depender de serviço externo de geração.',
+  },
 ]
 
 const DEMO_ROWS = [
@@ -60,18 +65,24 @@ const PAIN_POINTS = [
   'Vende o que não tem e descobre na hora de separar.',
   'O lote vence no fundo do galpão porque ninguém sabia que estava lá.',
   'A nota chega com preço diferente do pedido, e ninguém percebe até a hora de pagar.',
+  'A mercadoria sai antes de o cliente pagar o boleto.',
 ]
 
 const STEPS = [
   {
-    title: 'Cadastre produtos, armazéns e fornecedores',
+    title: 'Cadastre produtos, armazéns, fornecedores e clientes',
     description:
-      'Defina onde cada produto pode existir, de quem você compra, e comece a rastrear por lote desde a primeira entrada.',
+      'Defina onde cada produto pode existir, de quem você compra e para quem vende, e comece a rastrear por lote desde a primeira entrada.',
   },
   {
     title: 'Compre e receba por nota',
     description:
       'O pedido de compra dá entrada no estoque à medida que as notas chegam, parcial ou total. Saídas, transferências e ajustes ficam no mesmo histórico.',
+  },
+  {
+    title: 'Venda, receba e fature',
+    description:
+      'O pedido de venda reserva o saldo e já sai com o boleto. Com o pagamento confirmado, a nota fiscal baixa o estoque, do lote mais antigo para o mais novo.',
   },
   {
     title: 'Acompanhe o saldo consolidado',
@@ -96,17 +107,17 @@ const MODULES = [
     active: true,
   },
   {
-    status: 'Planejado',
+    status: 'Disponível',
     title: 'Faturamento',
     description:
-      'Emissão de nota consumindo o saldo do estoque direto, sem passar dado de um sistema pro outro na mão.',
-    active: false,
+      'Clientes, pedidos de venda com boleto (em PDF, com código de barras) e nota fiscal que baixa o estoque direto, sem passar dado de um sistema pro outro na mão.',
+    active: true,
   },
   {
     status: 'Planejado',
     title: 'Financeiro',
     description:
-      'Contas a pagar geradas pelas notas de compra recebidas, contas a receber pelo faturamento, e o fluxo de caixa dos dois.',
+      'Contas a pagar geradas pelas notas de compra recebidas, contas a receber pelos boletos do faturamento, e o fluxo de caixa dos dois.',
     active: false,
   },
 ]
@@ -118,16 +129,19 @@ const DONE = [
   'Autorização por perfil (Manager e Operator) nas rotas e na interface',
   'Pedidos de compra com status aberto, parcial, recebido e cancelado, recebidos por nota fiscal',
   'Recebimento numa unidade de trabalho: nota, status e entradas no estoque gravados juntos ou desfeitos juntos',
-  'CRUD de produtos, armazéns e fornecedores',
+  'Pedidos de venda com reserva de saldo, boleto simulado (linha digitável no padrão FEBRABAN e PDF com código de barras) e pagamento',
+  'Nota fiscal de saída com baixa de estoque em FIFO entre lotes, na mesma transação da nota',
+  'CRUD de produtos, armazéns, fornecedores e clientes',
   'Login e registro com Identity, token JWT com claims de role',
   'Validação assíncrona de SKU e CPF/CNPJ duplicados antes de gravar',
   'Erros da API padronizados em ProblemDetails (RFC 7807)',
-  '70 testes automatizados contra SQL Server real, incluindo concorrência e rollback',
+  '98 testes automatizados contra SQL Server real, incluindo concorrência e rollback',
 ]
 
 const NEXT = [
   'Contas a pagar geradas a partir das notas de compra recebidas',
-  'Módulo de faturamento consumindo o saldo do estoque',
+  'Contas a receber geradas a partir dos boletos',
+  'Pix e cartão como condições de pagamento',
   'Dashboard financeiro: contas a pagar/receber, fluxo de caixa',
   'Paginação e busca nas listagens',
 ]
@@ -162,6 +176,16 @@ const DECISIONS = [
     title: 'Caso de borda tem regra, não exceção silenciosa',
     description:
       'Receber mais que o pedido é recusado. Preço da nota diferente do pedido só entra com motivo. Cancelar depois de receber parte cancela só o pendente, e o que chegou fica no estoque.',
+  },
+  {
+    title: 'A venda reserva; quem baixa o estoque é a nota',
+    description:
+      'O pedido de venda só é aceito se houver saldo livre, descontando o que outros pedidos ainda não faturados já venderam. A mercadoria só sai na nota, e a nota só sai com o boleto pago.',
+  },
+  {
+    title: 'O mesmo pedido não é faturado duas vezes',
+    description:
+      'Duas pessoas emitindo a nota ao mesmo tempo disputam a mesma linha do pedido: uma fatura, a outra recebe 409. Um teste dispara cinco emissões simultâneas e exige uma única baixa no estoque.',
   },
 ]
 
@@ -320,7 +344,7 @@ function LandingPage() {
         <div className="relative mx-auto grid max-w-6xl gap-14 px-6 py-24 sm:py-28 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-12">
           <div>
             <span className="inline-flex items-center rounded-full border border-honey/30 bg-honey/10 px-3 py-1 text-xs font-medium tracking-wide text-honey-light">
-              Estoque e compras multi-armazém
+              Estoque, compras e faturamento multi-armazém
             </span>
 
             <h1 className="mt-6 text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl">
@@ -329,8 +353,8 @@ function LandingPage() {
 
             <p className="mt-6 max-w-xl text-lg text-cream/70 sm:text-xl">
               ProjectBee centraliza o saldo dos seus produtos por armazém e
-              lote em um só lugar, e dá entrada nas compras nota a nota, à
-              medida que a mercadoria chega.
+              lote em um só lugar, dá entrada nas compras nota a nota e baixa
+              o estoque na nota de venda, depois que o cliente paga.
             </p>
 
             <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">
@@ -374,10 +398,10 @@ function LandingPage() {
       <Section
         id="como-funciona"
         eyebrow="Como funciona"
-        title='Três passos entre "não sei" e "sei exatamente".'
+        title='Quatro passos entre "não sei" e "sei exatamente".'
         className="bg-cream"
       >
-        <div className="mt-14 grid gap-8 md:grid-cols-3">
+        <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((step, i) => (
             <div key={step.title}>
               <div className="relative flex h-10 w-10 items-center justify-center">
