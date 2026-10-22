@@ -11,6 +11,7 @@ public static class BusinessDataSeedExtensions
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         await SeedSuppliersAsync(db);
+        await SeedCustomersAsync(db);
 
         if (await db.Products.AnyAsync())
         {
@@ -75,6 +76,23 @@ public static class BusinessDataSeedExtensions
             new Supplier { Name = "Cooperativa Apícola do Vale", Document = "11222333000181", Email = "vendas@apicoladovale.dev", Phone = "(11) 4002-8922", IsActive = true, CreatedAt = now, UpdatedAt = now },
             new Supplier { Name = "Embalagens Favo Ltda.", Document = "44555666000172", Email = "pedidos@favoembalagens.dev", Phone = "(19) 3232-1000", IsActive = true, CreatedAt = now, UpdatedAt = now },
             new Supplier { Name = "João Batista Apicultor", Document = "12345678909", Email = "", Phone = "(15) 99876-5432", IsActive = true, CreatedAt = now, UpdatedAt = now });
+
+        await db.SaveChangesAsync();
+    }
+
+    // Mesma ideia dos fornecedores: bancos semeados antes do faturamento também ganham clientes.
+    private static async Task SeedCustomersAsync(AppDbContext db)
+    {
+        if (await db.Customers.IgnoreQueryFilters().AnyAsync())
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        db.Customers.AddRange(
+            new Customer { Name = "Empório Natural Ltda.", Document = "22333444000150", Email = "compras@emporionatural.dev", Phone = "(11) 3030-4040", IsActive = true, CreatedAt = now, UpdatedAt = now },
+            new Customer { Name = "Mercado Bom Dia", Document = "55666777000163", Email = "suprimentos@mercadobomdia.dev", Phone = "(11) 2121-9090", IsActive = true, CreatedAt = now, UpdatedAt = now },
+            new Customer { Name = "Maria Oliveira", Document = "98765432100", Email = "maria.oliveira@email.dev", Phone = "(11) 98888-1234", IsActive = true, CreatedAt = now, UpdatedAt = now });
 
         await db.SaveChangesAsync();
     }
