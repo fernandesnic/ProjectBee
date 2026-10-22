@@ -53,6 +53,20 @@ public class Supplier
     public byte[] RowVersion { get; set; } = null!; // controle de concorrência otimista na edição
 }
 
+public class Customer
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = string.Empty;
+    public string Document { get; set; } = string.Empty; // CNPJ ou CPF, só dígitos
+    public string Email { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public byte[] RowVersion { get; set; } = null!; // controle de concorrência otimista na edição
+}
+
 public class StockBalance
 {
     public Guid ProductId { get; set; }

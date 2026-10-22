@@ -65,6 +65,23 @@ public static class TestData
         return supplier;
     }
 
+    public static async Task<Customer> CreateCustomerAsync(TestDatabase database)
+    {
+        var customer = new Customer
+        {
+            Name = "Cliente de teste",
+            Document = Random.Shared.NextInt64(10_000_000_000_000, 100_000_000_000_000).ToString(),
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        await using var db = database.CreateContext();
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
+        return customer;
+    }
+
     public static async Task<int?> GetBalanceAsync(TestDatabase database, Guid productId, Guid storageId, string batch = Batch)
     {
         await using var db = database.CreateContext();

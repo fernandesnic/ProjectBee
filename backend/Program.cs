@@ -132,6 +132,8 @@ app.MapStorageEndpoints();
 
 app.MapSupplierEndpoints();
 
+app.MapCustomerEndpoints();
+
 app.MapStockEndpoints();
 
 app.MapMovementEndpoints();
