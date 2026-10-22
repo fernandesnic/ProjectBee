@@ -89,6 +89,9 @@ builder.Services.AddScoped<SalesService>();
 
 builder.Services.AddSingleton<TokenService>();
 
+// Boleto em PDF: a licença Community do QuestPDF cobre projetos abertos e empresas com receita anual abaixo de US$ 1 milhão.
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {

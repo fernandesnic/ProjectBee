@@ -60,6 +60,35 @@ public static class SalesOrderEndpointsExtensions
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status404NotFound);
 
+        salesApi.MapGet("/{id}/boleto/pdf", async (AppDbContext db, Guid id) =>
+        {
+            var data = await db.SalesOrders
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(o => o.Id == id && o.Boleto != null)
+                .Select(o => new BoletoPdfData(
+                    o.Number,
+                    o.Customer.Name,
+                    o.Customer.Document,
+                    o.Boleto!.OurNumber,
+                    o.Boleto.DigitableLine,
+                    o.Boleto.Amount,
+                    o.Boleto.DueDate,
+                    o.Boleto.CreatedAt,
+                    o.Boleto.PaidAt))
+                .FirstOrDefaultAsync();
+
+            if (data == null)
+                return Results.NotFound(new { mensagem = "Boleto não encontrado" });
+
+            return Results.File(BoletoPdf.Generate(data), "application/pdf", $"boleto-{SalesService.Code(data.SalesOrderNumber)}.pdf");
+        })
+        .WithSummary("Baixa o boleto do pedido em PDF")
+        .WithDescription("Ficha de compensação com recibo do pagador, linha digitável e código de barras (Intercalado 2 de 5). O documento é marcado como simulação: o título não está registrado em banco. Boleto pago sai com a data do pagamento no recibo. Disponível para Operator e Manager.")
+        .Produces(StatusCodes.Status200OK, contentType: "application/pdf")
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status404NotFound);
+
         salesApi.MapPost("/", async (
             CreateSalesOrderDTO dto,
             IValidator<CreateSalesOrderDTO> validator,

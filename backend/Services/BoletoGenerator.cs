@@ -9,7 +9,8 @@ public static class BoletoGenerator
 {
     private const string Bank = "001";
     private const string Currency = "9";
-    private const string Agreement = "1234567";
+    public const string BankCode = "001-9";
+    public const string Agreement = "1234567";
     private const string Wallet = "17";
 
     // Desde 22/02/2025 o fator de vencimento recomeça em 1000 (o de 1997 estourou os 4 dígitos).

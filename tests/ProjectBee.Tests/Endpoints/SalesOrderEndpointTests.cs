@@ -137,6 +137,27 @@ public class SalesOrderEndpointTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Boleto_downloads_as_pdf_also_for_operator()
+    {
+        using var manager = await _api.CreateManagerClientAsync();
+        using var operatorClient = await _api.CreateOperatorClientAsync();
+        var (customerId, productId, storageId) = await ArrangeStockAsync(manager, 10);
+        var order = await (await PostOrderAsync(manager, customerId, productId, storageId, 2)).Content.ReadFromJsonAsync<JsonElement>();
+
+        var response = await operatorClient.GetAsync($"/api/sales-orders/{IdOf(order)}/boleto/pdf");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/pdf", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal($"boleto-PV-{order.GetProperty("number").GetInt32():D6}.pdf",
+            response.Content.Headers.ContentDisposition?.FileName);
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        Assert.Equal("%PDF"u8.ToArray(), bytes[..4]);
+
+        var missing = await operatorClient.GetAsync($"/api/sales-orders/{Guid.NewGuid()}/boleto/pdf");
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+    }
+
+    [Fact]
     public async Task Operator_cannot_create_order_or_pay_boleto()
     {
         using var manager = await _api.CreateManagerClientAsync();

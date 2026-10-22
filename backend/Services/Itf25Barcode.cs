@@ -40,11 +40,13 @@ public static class Itf25Barcode
         return widths;
     }
 
-    // SVG com uma unidade de largura por módulo: quem desenha estica para o tamanho impresso.
-    public static string ToSvg(string digits, int height = 50)
+    // SVG com uma unidade de largura por módulo e a altura na proporção pedida (largura / altura):
+    // o desenho mantém a proporção, então ela precisa ser a do espaço onde vai impresso.
+    public static string ToSvg(string digits, double aspectRatio)
     {
         var widths = Widths(digits);
         var total = widths.Sum();
+        var height = Math.Round(total / aspectRatio, 2);
         var svg = new StringBuilder()
             .Append(CultureInfo.InvariantCulture,
                 $"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {total} {height}\" preserveAspectRatio=\"none\">");
