@@ -97,6 +97,12 @@ export function InvoiceForm({ salesOrderId, onDone, onCancel, onConflict, onBusy
         </p>
       )}
 
+      {order.status === 'Invoiced' && (
+        <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">
+          Este pedido já foi faturado por outra pessoa. Feche e recarregue a lista.
+        </p>
+      )}
+
       {errors.geral?.length ? (
         <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">
           {errors.geral.join(' ')}
