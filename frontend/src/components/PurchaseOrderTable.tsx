@@ -29,7 +29,7 @@ export function PurchaseOrderTable({ orders }: PurchaseOrderTableProps) {
           <Link
             key={order.id}
             to={`/app/purchases/${order.id}`}
-            className="block rounded-xl border border-line bg-cream p-4 transition hover:border-honey-dark"
+            className="group block rounded-xl border border-line bg-cream p-4 shadow-sm transition hover:border-honey-dark hover:shadow-md hover:shadow-honey/10 focus-visible:border-honey-dark focus-visible:outline-none active:scale-[0.99]"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -50,9 +50,18 @@ export function PurchaseOrderTable({ orders }: PurchaseOrderTableProps) {
                 </dd>
               </div>
             </dl>
-            <p className="mt-2 text-xs text-ink-muted">
-              {order.storageName} · {formatDateTime(order.createdAt)}
-            </p>
+            {/* Rodapé com chamada explícita: sem ela, o cartão parece só informativo */}
+            <div className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3">
+              <p className="min-w-0 truncate text-xs text-ink-muted">
+                {order.storageName} · {formatDateTime(order.createdAt)}
+              </p>
+              <span className="flex shrink-0 items-center gap-1 rounded-full border border-honey-dark/40 bg-honey/15 px-3 py-1.5 text-xs font-semibold text-honey-text transition group-hover:bg-honey group-hover:text-hive">
+                Ver pedido
+                <span aria-hidden="true" className="transition group-hover:translate-x-0.5">
+                  →
+                </span>
+              </span>
+            </div>
           </Link>
         ))}
       </div>
@@ -73,11 +82,13 @@ export function PurchaseOrderTable({ orders }: PurchaseOrderTableProps) {
           </thead>
           <tbody className="divide-y divide-line">
             {orders.map((order) => (
-              <tr key={order.id}>
+              <tr key={order.id} className="group relative transition hover:bg-cream">
                 <td className="py-2">
+                  {/* O ::after cobre a linha inteira: clicar em qualquer coluna abre o pedido,
+                      mas o link continua sendo um só (um Tab por linha, nome lido pelo código) */}
                   <Link
                     to={`/app/purchases/${order.id}`}
-                    className="font-mono font-medium text-ink underline-offset-2 hover:text-honey-dark hover:underline"
+                    className="font-mono font-medium text-ink underline-offset-2 outline-none after:absolute after:inset-0 group-hover:text-honey-dark group-hover:underline focus-visible:underline focus-visible:after:ring-2 focus-visible:after:ring-honey-dark"
                   >
                     {purchaseOrderCode(order.number)}
                   </Link>
