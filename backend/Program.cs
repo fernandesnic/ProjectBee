@@ -141,4 +141,6 @@ app.MapMovementEndpoints();
 
 app.MapPurchaseOrderEndpoints();
 
+app.MapSalesOrderEndpoints();
+
 app.Run();

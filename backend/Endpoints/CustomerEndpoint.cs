@@ -88,6 +88,17 @@ public static class CustomerEndpointsExtensions
                 return Results.NotFound(new { mensagem = $"Cliente não encontrado" });
             }
 
+            // Pedido ainda não faturado vai gerar nota para este cliente: ele precisa continuar no cadastro.
+            var pendingOrders = await db.SalesOrders.CountAsync(o => o.CustomerId == id
+                && (o.Status == SalesOrderStatus.AwaitingPayment || o.Status == SalesOrderStatus.Paid));
+            if (pendingOrders > 0)
+            {
+                return Results.Problem(
+                    title: "Exclusão recusada",
+                    detail: $"O cliente tem {pendingOrders} pedido(s) de venda aguardando pagamento ou faturamento. Fature-os antes de excluí-lo.",
+                    statusCode: StatusCodes.Status422UnprocessableEntity);
+            }
+
             var now = DateTime.UtcNow;
             customer.DeletedAt = now;
             customer.IsActive = false;
@@ -98,11 +109,12 @@ public static class CustomerEndpointsExtensions
         })
         .RequireAuthorization(policy => policy.RequireRole(Roles.Manager))
         .WithSummary("Remove um cliente")
-        .WithDescription("Exclusão lógica (soft delete): o cliente some das listagens, mas o documento continua reservado. Requer perfil Manager.")
+        .WithDescription("Exclusão lógica (soft delete): o cliente some das listagens, mas o documento continua reservado e os pedidos antigos seguem apontando para ele. Cliente com pedido aguardando pagamento ou faturamento retorna 422. Requer perfil Manager.")
         .Produces(StatusCodes.Status204NoContent)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
-        .Produces(StatusCodes.Status404NotFound);
+        .Produces(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         customersApi.MapPut("/{id}", async (UpdateCustomerDTO dto, IValidator<UpdateCustomerDTO> validator, AppDbContext db, Guid id) =>
         {
