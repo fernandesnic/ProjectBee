@@ -26,6 +26,12 @@
 @orderRowVersion = {{createOrder.response.body.$.rowVersion}}
 @orderRowVersionAfterReceipt = {{receivePartial.response.body.$.rowVersion}}
 
+# Faturamento: pagar o boleto e emitir a nota exigem o rowVersion do pedido de venda.
+@customerId = {{createCustomer.response.body.$.id}}
+@saleId = {{createSale.response.body.$.id}}
+@saleRowVersion = {{createSale.response.body.$.rowVersion}}
+@saleRowVersionAfterPayment = {{paySale.response.body.$.rowVersion}}
+
 
 ### =====================================================
 ### HEALTH CHECK
@@ -408,4 +414,84 @@ Authorization: Bearer {{token}}
 
 ### Histórico do lote comprado -> 200, um movimento PurchaseReceipt de +20
 GET {{host}}/api/movements?productId={{productId}}&storageId={{storageId}}&batch=LOTE-COMPRA-01
+Authorization: Bearer {{token}}
+
+
+### =====================================================
+### CLIENTES E FATURAMENTO
+### =====================================================
+
+### Criar cliente -> 201 (CNPJ aleatório, só dígitos)
+# @name createCustomer
+POST {{host}}/api/customers
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "name": "Empório Flor do Campo", "document": "33444555{{$randomInt 100000 999999}}", "email": "compras@flordocampo.dev", "phone": "(11) 3333-2222" }
+
+### Pedido maior que o saldo disponível -> 422 (informa disponível e pedido)
+POST {{host}}/api/sales-orders
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "customerId": "{{customerId}}", "storageId": "{{storageId}}", "paymentMethod": "Boleto", "items": [ { "productId": "{{productId}}", "quantity": 99999 } ] }
+
+### Pedido no Pix -> 400 (por enquanto só boleto)
+POST {{host}}/api/sales-orders
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "customerId": "{{customerId}}", "storageId": "{{storageId}}", "paymentMethod": "Pix", "items": [ { "productId": "{{productId}}", "quantity": 1 } ] }
+
+### Criar pedido de venda: 5 unidades no boleto -> 201, status AwaitingPayment, boleto emitido
+# @name createSale
+POST {{host}}/api/sales-orders
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "customerId": "{{customerId}}", "storageId": "{{storageId}}", "paymentMethod": "Boleto", "notes": "Entrega na loja", "items": [ { "productId": "{{productId}}", "quantity": 5 } ] }
+
+### Emitir nota antes do pagamento -> 422
+POST {{host}}/api/invoices
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "salesOrderId": "{{saleId}}", "rowVersion": "{{saleRowVersion}}" }
+
+### Excluir cliente com pedido aguardando pagamento -> 422
+DELETE {{host}}/api/customers/{{customerId}}
+Authorization: Bearer {{token}}
+
+### Simular o pagamento do boleto -> 200, status Paid
+# @name paySale
+POST {{host}}/api/sales-orders/{{saleId}}/boleto/payment
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "rowVersion": "{{saleRowVersion}}" }
+
+### Pagar de novo com a versão velha -> 409
+POST {{host}}/api/sales-orders/{{saleId}}/boleto/payment
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "rowVersion": "{{saleRowVersion}}" }
+
+### Emitir a nota -> 201, itens por lote (FIFO); o estoque cai 5
+POST {{host}}/api/invoices
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{ "salesOrderId": "{{saleId}}", "rowVersion": "{{saleRowVersionAfterPayment}}" }
+
+### Pedido faturado -> 200, status Invoiced com o número da nota
+GET {{host}}/api/sales-orders/{{saleId}}
+Authorization: Bearer {{token}}
+
+### Notas emitidas -> 200
+GET {{host}}/api/invoices
+Authorization: Bearer {{token}}
+
+### Histórico do lote vendido -> 200, movimento SalesInvoice negativo
+GET {{host}}/api/movements?productId={{productId}}&storageId={{storageId}}
 Authorization: Bearer {{token}}

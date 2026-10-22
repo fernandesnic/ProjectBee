@@ -1,6 +1,6 @@
 # 🐝 ProjectBee
 
-**Mini-ERP de estoque multi-armazém e compras, com livro-razão de movimentações, rastreabilidade por lote, recebimento de notas numa unidade de trabalho e autenticação por perfil de acesso.**
+**Mini-ERP de estoque multi-armazém, compras e faturamento, com livro-razão de movimentações, rastreabilidade por lote, notas de entrada e de saída numa unidade de trabalho e autenticação por perfil de acesso.**
 
 ![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)
 ![C#](https://img.shields.io/badge/C%23-14-239120)
@@ -15,8 +15,9 @@
 - **Saldo é consequência do histórico:** todo movimento entra no livro-razão na mesma transação que atualiza o saldo, e uma query prova que as duas coisas batem.
 - **Concorrência tratada:** `rowversion` + `409`, com testes de rajada de requisições simultâneas.
 - **Compras com casos de borda:** recebimento parcial, excedente, divergência de preço, nota duplicada e cancelamento do pendente, tudo numa unidade de trabalho.
+- **Faturamento de ponta a ponta:** pedido de venda com reserva de saldo, boleto simulado com linha digitável FEBRABAN, pagamento e nota fiscal que baixa o estoque em FIFO entre lotes.
 - **Acesso por perfil:** `Manager` e `Operator`, com a UI e a API respeitando o perfil.
-- **70 testes** contra SQL Server real (não InMemory).
+- **93 testes** contra SQL Server real (não InMemory).
 - **No ar:** frontend na Vercel, API em container Docker no Azure e banco no Azure SQL.
 
 ### Índice
@@ -35,7 +36,9 @@ O segundo módulo é o de **compras**, que é por onde o estoque recebe mercador
 
 O foco do projeto não é quantidade de endpoints, e sim modelagem correta: chave composta, livro-razão, concorrência otimista, unit of work, integridade referencial validada antes da persistência, contratos de entrada e saída separados das entidades, autorização por perfil (não por auto-atribuição) e erros padronizados em RFC 7807.
 
-Faturamento e financeiro estão planejados como próximos módulos. O recebimento de compras já deixa o ponto de extensão pronto para gerar as contas a pagar.
+O terceiro módulo é o de **faturamento**, que é por onde a mercadoria sai. Clientes, pedidos de venda que já nascem com o boleto emitido, simulação do retorno bancário e emissão da nota fiscal. O pedido só reserva o saldo; quem baixa o estoque é a nota, e ela só sai depois do boleto pago. Nota, saídas lote a lote e status do pedido entram na mesma unidade de trabalho, e duas emissões simultâneas do mesmo pedido terminam em `409` para a segunda.
+
+Financeiro está planejado como próximo módulo. O recebimento de compras já deixa o ponto de extensão pronto para gerar as contas a pagar, e o boleto é a origem natural das contas a receber.
 
 ---
 
@@ -64,12 +67,18 @@ Product ──┐
           │    RowVersion (concorrência otimista)
           │
           └──< StockMovement >── Storage         histórico imutável (N linhas por lote)
-               Type, Quantity (com sinal), Reason, TransferId, PurchaseReceiptId, CreatedBy, CreatedAt
+               Type, Quantity (com sinal), Reason, TransferId, PurchaseReceiptId, SalesInvoiceId, CreatedBy, CreatedAt
 
 Supplier ──< PurchaseOrder >── Storage           pedido de compra (Number sequencial, Status, RowVersion)
                ├──< PurchaseOrderItem >── Product        pedido, recebido, preço do pedido
                └──< PurchaseReceipt                      uma nota fiscal do fornecedor
                       └──< PurchaseReceiptItem           lote, quantidade, preço da nota
+
+Customer ──< SalesOrder >── Storage              pedido de venda (Number sequencial, Status, PaymentMethod, RowVersion)
+               ├──< SalesOrderItem >── Product           quantidade, preço do produto no pedido
+               ├─── Boleto (1:1)                         nosso número, linha digitável, valor, vencimento, pago em
+               └─── SalesInvoice (1:1)                   nota fiscal de saída (Number sequencial)
+                      └──< SalesInvoiceItem              produto, lote, quantidade, preço
 
 AppUser ──< IdentityUserRole >── IdentityRole (Manager | Operator)
 ```
@@ -91,6 +100,8 @@ O SKU tem índice único no banco (`nvarchar(15)`), além da validação assínc
 | Transferência | `TransferOut` + `TransferIn` | `−` na origem, `+` no destino | Dois movimentos ligados pelo mesmo `TransferId`, gravados juntos |
 | Ajuste | `Adjustment` | `±` diferença | Recebe a **quantidade contada**; o sistema calcula a diferença. Motivo obrigatório, só `Manager` |
 | Saldo inicial | `OpeningBalance` | `±` diferença | Gerado uma única vez pela migration que implantou o livro-razão |
+| Recebimento de compra | `PurchaseReceipt` | `+` quantidade | Ligado à nota do fornecedor (`PurchaseReceiptId`) |
+| Nota de venda | `SalesInvoice` | `−` quantidade | Ligado à nota de saída (`SalesInvoiceId`); um item pode gerar um movimento por lote |
 
 Cada operação grava o movimento e atualiza o saldo **no mesmo `SaveChanges`** — ou os dois entram, ou nenhum entra.
 
@@ -212,6 +223,30 @@ O `/api/stock` é **somente leitura**. Os antigos `POST`, `PUT` e `DELETE` grava
 
 Criar, receber e cancelar devolvem o pedido completo, com itens, recebimentos e o `rowVersion` novo.
 
+### Clientes
+
+| Método | Rota | Descrição | Autorização | Respostas |
+|---|---|---|---|---|
+| `POST` | `/api/customers` | Cadastra cliente | Manager | `201` `400` |
+| `GET` | `/api/customers` | Lista clientes | Manager, Operator | `200` |
+| `GET` | `/api/customers/{id}` | Busca por ID | Manager, Operator | `200` `404` |
+| `PUT` | `/api/customers/{id}` | Atualiza cliente (exige `rowVersion`) | Manager | `200` `400` `404` `409` |
+| `DELETE` | `/api/customers/{id}` | Remove cliente | Manager | `204` `404` `422` |
+
+### Faturamento
+
+| Método | Rota | Corpo | Autorização | Respostas |
+|---|---|---|---|---|
+| `GET` | `/api/sales-orders?status=&customerId=` | — | Manager, Operator | `200` |
+| `GET` | `/api/sales-orders/{id}` | — | Manager, Operator | `200` `404` |
+| `POST` | `/api/sales-orders` | `customerId`, `storageId`, `paymentMethod`, `notes`, `items[]` (`productId`, `quantity`) | Manager | `201` `400` `422` |
+| `POST` | `/api/sales-orders/{id}/boleto/payment` | `rowVersion` | Manager | `200` `400` `403` `404` `409` `422` |
+| `GET` | `/api/invoices?customerId=` | — | Manager, Operator | `200` |
+| `GET` | `/api/invoices/{id}` | — | Manager, Operator | `200` `404` |
+| `POST` | `/api/invoices` | `salesOrderId`, `rowVersion` | Manager, Operator | `201` `400` `404` `409` `422` |
+
+O pedido devolve o boleto junto (linha digitável de 47 dígitos, valor, vencimento e status) e, depois de faturado, o número da nota. A nota devolve os itens já quebrados por lote.
+
 > O arquivo [`ProjectBee.http`](./backend/ProjectBee.http) roda de ponta a ponta, incluindo os casos de erro: o login guarda o token e as criações guardam os IDs, então basta executar as requisições na ordem. Cada uma traz no título o status esperado.
 
 ---
@@ -265,6 +300,19 @@ Criar, receber e cancelar devolvem o pedido completo, com itens, recebimentos e 
 - Produto ou armazém desativados depois do pedido bloqueiam o recebimento com `422`, como nos movimentos manuais
 - Receber e cancelar exigem o `rowVersion` do pedido: duas pessoas lançando a mesma entrega, ou um cancelamento em cima de um recebimento, terminam em `409` para a segunda
 
+**Clientes**
+- Mesmas regras dos fornecedores: CPF ou CNPJ só com dígitos, único inclusive entre excluídos e imutável; e-mail e telefone opcionais
+- Cliente inativo não recebe pedido novo; excluir cliente com pedido aguardando pagamento ou faturamento é recusado com `422`
+
+**Faturamento**
+- O pedido nasce **Aguardando pagamento**, passa a **Pago** quando o boleto é pago e a **Faturado** quando a nota é emitida
+- Cliente, armazém de expedição e produtos ativos; cada produto uma vez por pedido. O preço é o do produto no momento do pedido, gravado no item — reajuste depois não muda venda já feita
+- Condição de pagamento `Boleto`, `Pix` ou `CreditCard` no contrato; por enquanto só boleto é aceito (`400` para as outras)
+- **Reserva de saldo:** o pedido não mexe no estoque, mas só é aceito se o armazém tiver saldo **disponível** — o físico menos o que outros pedidos ainda não faturados já venderam. Sem isso, o mesmo pote seria vendido duas vezes
+- O boleto é emitido junto com o pedido, com vencimento em 3 dias contados do dia em Brasília. A linha digitável segue o layout FEBRABAN (banco, moeda, fator de vencimento, valor, campo livre e dígitos verificadores módulo 10 e 11 de verdade), mas o título não é registrado em banco nenhum: o pagamento é simulado
+- A nota só sai com o boleto pago, e uma vez por pedido. Ela baixa o estoque do armazém do pedido em **FIFO**: o lote que entrou primeiro sai primeiro, e um item pode sair de mais de um lote. Saldo que sumiu entre o pedido e a nota (uma saída avulsa, por exemplo) recusa a emissão com `422` e nada é gravado
+- Pagar e faturar exigem o `rowVersion` do pedido; duas emissões simultâneas do mesmo pedido terminam em `409` para a segunda, e a mercadoria sai uma vez só
+
 ---
 
 ## Decisões técnicas
@@ -276,6 +324,8 @@ Criar, receber e cancelar devolvem o pedido completo, com itens, recebimentos e 
 **Unit of Work nas compras.** Um recebimento mexe em várias tabelas ao mesmo tempo: nota, itens da nota, quantidade recebida, status do pedido, movimentos e saldos — e, no futuro, contas a pagar. O `UnitOfWork` abre uma transação, roda o trabalho inteiro e só confirma se ele terminar com sucesso; regra recusada, conflito de concorrência ou exceção em qualquer passo desfazem tudo, mesmo o que já tinha passado por `SaveChanges`, e limpam o `ChangeTracker`. Como a API usa `EnableRetryOnFailure` (Azure SQL acordando), a transação roda dentro da estratégia de execução do EF: se a conexão cair no meio, o bloco inteiro é repetido do zero, por isso o trabalho faz as próprias leituras. A entrada no estoque reaproveita o `StockMovementService` (`StageEntryAsync`), que lança movimento e saldo sem gravar, então continua existindo um único caminho de escrita no livro-razão.
 
 **Contas a pagar engatilhado.** O `PurchaseService` chama cada `IPurchaseReceiptListener` registrado dentro da mesma unidade de trabalho do recebimento, com o pedido e a nota (número, fornecedor, itens e preço da nota). O módulo financeiro só precisa registrar um listener que crie o título: se ele falhar, o recebimento inteiro é desfeito, e nunca existe nota no estoque sem título ou título sem nota. Hoje nenhum está registrado.
+
+**Faturar reivindica o pedido primeiro.** A nota tem índice único por pedido. Se ela fosse inserida antes do `UPDATE` do pedido, duas emissões simultâneas disputariam esse índice e a segunda terminaria em `500` (violação de chave), não em `409`. Por isso o `SalesService` grava o status Faturado primeiro, com o `rowVersion` lido no `WHERE`, e só então lança a nota e as saídas, na mesma transação: a segunda requisição espera o lock da linha do pedido e sai com `409`. Um teste dispara cinco emissões ao mesmo tempo e exige exatamente uma nota e uma baixa.
 
 **`409` e `422` são coisas diferentes.** `422` diz "isso não pode ser feito" (saldo insuficiente) — repetir não adianta. `409` diz "o mundo mudou enquanto você decidia" — consultar o saldo e repetir pode dar certo. Separar os dois deixa o cliente reagir certo a cada um.
 
@@ -314,10 +364,10 @@ cd ProjectBee/tests/ProjectBee.Tests
 dotnet test
 ```
 
-São 70 testes, em duas camadas:
+São 93 testes, em duas camadas:
 
-- **Serviço** (`StockMovementServiceTests`, `PurchaseServiceTests`, `UnitOfWorkTests`) — as regras do livro-razão chamando o `StockMovementService` direto: saldo insuficiente, transferência para o mesmo armazém, ajuste sem diferença, sinal de cada movimento, par de transferência com o mesmo `TransferId`, e a prova real depois de uma sequência mista de operações. Nas compras, cada caso de borda: recebimento parcial e total, excedente, cancelamento depois de receber parte, nota em pedido cancelado, preço da nota diferente do pedido, nota repetida, `rowVersion` velho e um listener que falha depois do `SaveChanges` — sem deixar nota, saldo ou movimento para trás.
-- **API** (`MovementEndpointTests`, `StorageEndpointTests`, `ProductEndpointTests`, `SupplierEndpointTests`, `PurchaseOrderEndpointTests`, `SeedTests`) — a aplicação inteira via `WebApplicationFactory`, com autenticação de verdade: `400` com erros por campo, `422` com `detail`, `401` sem token, `403` do Operator no ajuste e na criação e cancelamento de pedido, bloqueios de desativação e exclusão de armazém, produto e fornecedor, o `/api/stock` recusando escrita, e a prova real fechando com os dados de demonstração num banco recém-criado. Os testes de compras passam pelo `EnableRetryOnFailure` da API, então também provam que a transação do `UnitOfWork` roda dentro da estratégia de execução.
+- **Serviço** (`StockMovementServiceTests`, `PurchaseServiceTests`, `UnitOfWorkTests`, `BoletoGeneratorTests`) — as regras do livro-razão chamando o `StockMovementService` direto: saldo insuficiente, transferência para o mesmo armazém, ajuste sem diferença, sinal de cada movimento, par de transferência com o mesmo `TransferId`, e a prova real depois de uma sequência mista de operações. Nas compras, cada caso de borda: recebimento parcial e total, excedente, cancelamento depois de receber parte, nota em pedido cancelado, preço da nota diferente do pedido, nota repetida, `rowVersion` velho e um listener que falha depois do `SaveChanges` — sem deixar nota, saldo ou movimento para trás. No boleto, os dígitos verificadores são recalculados de forma independente no teste.
+- **API** (`MovementEndpointTests`, `StorageEndpointTests`, `ProductEndpointTests`, `SupplierEndpointTests`, `CustomerEndpointTests`, `PurchaseOrderEndpointTests`, `SalesOrderEndpointTests`, `InvoiceEndpointTests`, `SeedTests`) — a aplicação inteira via `WebApplicationFactory`, com autenticação de verdade: `400` com erros por campo, `422` com `detail`, `401` sem token, `403` do Operator no ajuste e na criação e cancelamento de pedido, bloqueios de desativação e exclusão de armazém, produto e fornecedor, o `/api/stock` recusando escrita, e a prova real fechando com os dados de demonstração num banco recém-criado. Os testes de compras passam pelo `EnableRetryOnFailure` da API, então também provam que a transação do `UnitOfWork` roda dentro da estratégia de execução. No faturamento: reserva de saldo entre pedidos, boleto pago uma vez só, nota antes do pagamento, nota repetida, FIFO entre lotes (com o lote mais antigo vindo depois em ordem alfabética) e saldo que some entre o pedido e a nota.
 
 A concorrência é testada de dois jeitos:
 
@@ -332,7 +382,7 @@ Os testes usam o SQL Server de `localhost` com autenticação do Windows. Para a
 
 ## Telas
 
-O frontend cobre todos os módulos, com a UI condicionada ao perfil do usuário — um `Operator` logado não vê os botões de criação e exclusão de dados mestres, nem o de ajuste de inventário, nem os de criar e cancelar pedido de compra (mas registra o recebimento das notas).
+O frontend cobre todos os módulos, com a UI condicionada ao perfil do usuário — um `Operator` logado não vê os botões de criação e exclusão de dados mestres, nem o de ajuste de inventário, nem os de criar e cancelar pedido de compra (mas registra o recebimento das notas), nem os de criar pedido de venda e simular o pagamento do boleto (mas emite as notas fiscais).
 
 | Rota | Tela | O que mostra |
 |---|---|---|
@@ -345,6 +395,10 @@ O frontend cobre todos os módulos, com a UI condicionada ao perfil do usuário 
 | `/app/suppliers` | Fornecedores | CRUD com CPF/CNPJ mascarado e contato |
 | `/app/purchases` | Pedidos de compra | Pedidos pendentes, unidades a receber, filtro por status e criação de pedido |
 | `/app/purchases/:id` | Pedido de compra | Itens com pedido, recebido e pendente; notas recebidas; recebimento de nota e cancelamento do pendente |
+| `/app/customers` | Clientes | CRUD com CPF/CNPJ mascarado e contato |
+| `/app/sales` | Pedidos de venda | Boletos em aberto, pedidos pagos a faturar, filtro por status e criação de pedido com saldo do armazém por item |
+| `/app/sales/:id` | Pedido de venda | Itens, boleto com linha digitável para copiar e simulação do pagamento, nota emitida |
+| `/app/invoices` | Notas fiscais | Pedidos pagos aguardando nota, emissão da nota e notas emitidas com os lotes que saíram |
 
 No recebimento, cada item pendente já vem com a quantidade pendente e o preço do pedido: o caso comum (a nota bate com o pedido) é só informar a nota e os lotes. Preço diferente fica destacado e pede o motivo; quantidade acima do pendente é barrada antes de enviar.
 
@@ -369,7 +423,8 @@ ProjectBee/
 │   ├── Middlewares/            # Tratamento global de exceções
 │   ├── Migrations/             # Histórico do schema e scripts de dados (EF Core)
 │   ├── Models/                 # Entidades de domínio e constantes de perfil
-│   ├── Services/               # StockMovementService (livro-razão), PurchaseService (compras) e JWT
+│   ├── Services/               # StockMovementService (livro-razão), PurchaseService (compras),
+│   │                           #   SalesService e BoletoGenerator (faturamento) e JWT
 │   └── Validators/             # Regras de validação (FluentValidation)
 ├── tests/
 │   └── ProjectBee.Tests/   # xUnit: testes de serviço e de API contra SQL Server
@@ -378,7 +433,8 @@ ProjectBee/
         ├── components/         # AppLayout, tabelas e formulários de cada módulo,
         │                       #   MovementForm, MovementHistory, Modal, ConfirmDialog, Toast
         ├── pages/              # Landing, Login, Dashboard, Products, Storages, Stock,
-        │                       #   Suppliers, PurchaseOrders, PurchaseOrder
+        │                       #   Suppliers, PurchaseOrders, PurchaseOrder, Customers,
+        │                       #   SalesOrders, SalesOrder, Invoices
         └── services/           # api.ts (Axios + interceptors), token.ts (JWT),
                                 #   navigation.ts (redirect 401 via React Router)
 ```
@@ -416,7 +472,7 @@ dotnet run
 
 A API sobe em `http://localhost:5054`. O Swagger fica em **http://localhost:5054/swagger** e o health check em **http://localhost:5054/health** (verifica também a conexão com o banco, respondendo `503` se o SQL Server estiver inacessível).
 
-No primeiro boot com a base vazia, produtos, armazéns e saldos de demonstração são semeados automaticamente — as telas já sobem com dado real para navegar. Fornecedores de demonstração têm checagem própria: bancos criados antes do módulo de compras também os recebem no próximo boot.
+No primeiro boot com a base vazia, produtos, armazéns e saldos de demonstração são semeados automaticamente — as telas já sobem com dado real para navegar. Fornecedores e clientes de demonstração têm checagem própria: bancos criados antes dos módulos de compras e de faturamento também os recebem no próximo boot.
 
 > As origens de CORS são lidas de `Cors:AllowedOrigins` no `appsettings.json` — já configurado para `http://localhost:5173` em desenvolvimento.
 
@@ -445,6 +501,7 @@ O frontend sobe em `http://localhost:5173` e aponta para `http://localhost:5054`
 - [x] Deploy com demo pública: frontend na Vercel, API em container Docker no Azure e banco no Azure SQL
 - [x] Dockerfile da API, com build em duas etapas (SDK para compilar, runtime para rodar)
 - [x] Módulo de compras: fornecedores, pedidos com recebimento parcial ou total por nota, cancelamento do pendente e divergência de preço, numa unidade de trabalho
+- [x] Módulo de faturamento: clientes, pedidos de venda com reserva de saldo, boleto simulado e nota fiscal com baixa de estoque em FIFO
 
 **Próximo**
 - [ ] CI no GitHub Actions, rodando os testes contra um SQL Server em container
@@ -453,12 +510,15 @@ O frontend sobe em `http://localhost:5173` e aponta para `http://localhost:5054`
 - [ ] Paginação e busca nas listagens
 - [ ] Contas a pagar: um `IPurchaseReceiptListener` que gera o título de cada nota recebida
 - [ ] Editar itens de um pedido ainda sem recebimento (hoje o caminho é cancelar e criar outro)
+- [ ] Cancelar pedido de venda com boleto em aberto, liberando a reserva de saldo
+- [ ] Pix e cartão como condições de pagamento (o contrato da API já prevê os dois)
+- [ ] Contas a receber a partir dos boletos
 
 **Depois**
 - [ ] Docker Compose para subir API e banco com um comando
 - [ ] Soft delete nas listagens
 - [ ] Rate limiting e log de auditoria (o livro-razão já audita o estoque; falta o resto do sistema)
-- [ ] Próximo módulo do mini-ERP: faturamento
+- [ ] Próximo módulo do mini-ERP: financeiro
 
 ### Limitação conhecida
 
