@@ -15,7 +15,7 @@
 - **Saldo é consequência do histórico:** todo movimento entra no livro-razão na mesma transação que atualiza o saldo, e uma query prova que as duas coisas batem.
 - **Concorrência tratada:** `rowversion` + `409`, com testes de rajada de requisições simultâneas.
 - **Compras com casos de borda:** recebimento parcial, excedente, divergência de preço, nota duplicada e cancelamento do pendente, tudo numa unidade de trabalho.
-- **Faturamento de ponta a ponta:** pedido de venda com reserva de saldo, boleto simulado com linha digitável FEBRABAN, pagamento e nota fiscal que baixa o estoque em FIFO entre lotes.
+- **Faturamento de ponta a ponta:** pedido de venda com reserva de saldo, boleto simulado com linha digitável FEBRABAN e PDF com código de barras, pagamento e nota fiscal que baixa o estoque em FIFO entre lotes.
 - **Acesso por perfil:** `Manager` e `Operator`, com a UI e a API respeitando o perfil.
 - **98 testes** contra SQL Server real (não InMemory).
 - **No ar:** frontend na Vercel, API em container Docker no Azure e banco no Azure SQL.
@@ -134,8 +134,8 @@ O livro-razão foi implantado com o sistema já tendo saldos — criados quando 
 
 Autenticação via ASP.NET Core Identity + JWT Bearer, com dois perfis:
 
-- **`Manager`** — dados mestres (produtos, armazéns), ajuste de inventário e operações destrutivas
-- **`Operator`** — movimentações do dia a dia: entrada, saída e transferência
+- **`Manager`** — dados mestres (produtos, armazéns, fornecedores e clientes), ajuste de inventário, criação e cancelamento de pedido de compra, criação de pedido de venda, simulação do pagamento do boleto e operações destrutivas
+- **`Operator`** — operação do dia a dia: entrada, saída e transferência, recebimento das notas de compra, download do boleto e emissão da nota fiscal de venda
 
 | Método | Rota | Descrição | Autorização |
 |---|---|---|---|
@@ -159,7 +159,7 @@ Os erros seguem RFC 7807 (`ProblemDetails`), e cada código tem um significado s
 | Código | Quando | Onde vem a explicação |
 |---|---|---|
 | `400` | O pedido está malformado (campo vazio, quantidade ≤ 0, lote fora do padrão) | `errors`, uma lista de mensagens por campo; se o JSON nem desserializa, `detail` |
-| `409` | Outra operação alterou o mesmo saldo, produto ou armazém entre a leitura e a gravação | `detail` — basta consultar de novo e repetir |
+| `409` | Outra operação alterou o mesmo saldo, cadastro ou pedido entre a leitura e a gravação | `detail` — basta consultar de novo e repetir |
 | `422` | O pedido é válido, mas a regra de negócio recusa (saldo insuficiente, armazém com saldo) | `detail` |
 
 ### Movimentações
@@ -324,7 +324,7 @@ O pedido devolve o boleto junto (linha digitável de 47 dígitos, valor, vencime
 
 **Concorrência otimista com `rowversion`.** O furo clássico: duas saídas leem saldo 10 ao mesmo tempo, as duas passam na checagem e as duas gravam — uma atualização se perde, e o saldo pode até ficar negativo. O `StockBalance` tem uma coluna `rowversion` que o SQL Server incrementa a cada `UPDATE`. O EF inclui o valor lido no `WHERE`; se outra requisição gravou no meio, nenhuma linha é afetada, o EF lança `DbUpdateConcurrencyException` e a API devolve `409`. Escolhi otimista em vez de lock pessimista porque conflito no mesmo lote é raro: não faz sentido travar toda leitura para proteger um caso eventual.
 
-**Unit of Work nas compras.** Um recebimento mexe em várias tabelas ao mesmo tempo: nota, itens da nota, quantidade recebida, status do pedido, movimentos e saldos — e, no futuro, contas a pagar. O `UnitOfWork` abre uma transação, roda o trabalho inteiro e só confirma se ele terminar com sucesso; regra recusada, conflito de concorrência ou exceção em qualquer passo desfazem tudo, mesmo o que já tinha passado por `SaveChanges`, e limpam o `ChangeTracker`. Como a API usa `EnableRetryOnFailure` (Azure SQL acordando), a transação roda dentro da estratégia de execução do EF: se a conexão cair no meio, o bloco inteiro é repetido do zero, por isso o trabalho faz as próprias leituras. A entrada no estoque reaproveita o `StockMovementService` (`StageEntryAsync`), que lança movimento e saldo sem gravar, então continua existindo um único caminho de escrita no livro-razão.
+**Unit of Work nas compras.** Um recebimento mexe em várias tabelas ao mesmo tempo: nota, itens da nota, quantidade recebida, status do pedido, movimentos e saldos — e, no futuro, contas a pagar. O `UnitOfWork` abre uma transação, roda o trabalho inteiro e só confirma se ele terminar com sucesso; regra recusada, conflito de concorrência ou exceção em qualquer passo desfazem tudo, mesmo o que já tinha passado por `SaveChanges`, e limpam o `ChangeTracker`. Como a API usa `EnableRetryOnFailure` (Azure SQL acordando), a transação roda dentro da estratégia de execução do EF: se a conexão cair no meio, o bloco inteiro é repetido do zero, por isso o trabalho faz as próprias leituras. A entrada no estoque reaproveita o `StockMovementService` (`StageEntryAsync`), que lança movimento e saldo sem gravar, então continua existindo um único caminho de escrita no livro-razão. O faturamento usa a mesma unidade de trabalho: a criação do pedido grava pedido e boleto juntos, e a nota grava status, nota e saídas (`StageExitAsync`, o par da entrada) juntos.
 
 **Contas a pagar engatilhado.** O `PurchaseService` chama cada `IPurchaseReceiptListener` registrado dentro da mesma unidade de trabalho do recebimento, com o pedido e a nota (número, fornecedor, itens e preço da nota). O módulo financeiro só precisa registrar um listener que crie o título: se ele falhar, o recebimento inteiro é desfeito, e nunca existe nota no estoque sem título ou título sem nota. Hoje nenhum está registrado.
 
@@ -391,7 +391,7 @@ O frontend cobre todos os módulos, com a UI condicionada ao perfil do usuário 
 |---|---|---|
 | `/` | Landing | Apresentação do projeto e acesso ao sistema |
 | `/login` | Login | Autenticação e obtenção do JWT |
-| `/app` | Dashboard | Prévia dos módulos planejados (dados ilustrativos) |
+| `/app` | Dashboard | Valor em estoque por produto e armazém; a visão geral de faturamento e financeiro ainda é uma prévia com dados ilustrativos |
 | `/app/products` | Produtos | CRUD, valor em estoque por produto, produtos sem saldo |
 | `/app/storages` | Armazéns | CRUD, armazéns ativos, valor armazenado |
 | `/app/stock` | Estoque | Saldos por lote, unidades e valor total; entrada, saída, transferência, ajuste e histórico de cada lote |
@@ -516,6 +516,7 @@ O frontend sobe em `http://localhost:5173` e aponta para `http://localhost:5054`
 - [ ] Cancelar pedido de venda com boleto em aberto, liberando a reserva de saldo
 - [ ] Pix e cartão como condições de pagamento (o contrato da API já prevê os dois)
 - [ ] Contas a receber a partir dos boletos
+- [ ] Dashboard de faturamento com dados reais (hoje a visão geral ainda mostra valores ilustrativos)
 
 **Depois**
 - [ ] Docker Compose para subir API e banco com um comando
