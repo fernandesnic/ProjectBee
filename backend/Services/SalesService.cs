@@ -53,9 +53,14 @@ public class SalesService
                 .ToDictionaryAsync(p => p.Id);
 
             var storageName = await _db.Storages
-                .Where(s => s.Id == dto.StorageId)
+                .Where(s => s.Id == dto.StorageId && s.IsActive)
                 .Select(s => s.Name)
-                .FirstAsync();
+                .FirstOrDefaultAsync();
+
+            // O validator já conferiu, mas fora da transação: um cadastro excluído ou desativado no
+            // meio vira 422 aqui, em vez de estourar no dicionário ou no FirstAsync.
+            if (storageName == null || productIds.Any(id => !products.TryGetValue(id, out var p) || !p.IsActive))
+                return SalesResult.Fail("O armazém ou um dos produtos do pedido foi excluído ou desativado. Recarregue e confira o pedido.");
 
             // Disponível = saldo físico do armazém menos o que outros pedidos ainda não faturados já
             // venderam. Sem descontar a reserva, o mesmo pote seria vendido duas vezes.
