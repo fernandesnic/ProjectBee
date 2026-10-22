@@ -462,6 +462,10 @@ Authorization: Bearer {{token}}
 DELETE {{host}}/api/customers/{{customerId}}
 Authorization: Bearer {{token}}
 
+### Boleto em PDF -> 200, application/pdf (ficha de compensação com código de barras)
+GET {{host}}/api/sales-orders/{{saleId}}/boleto/pdf
+Authorization: Bearer {{token}}
+
 ### Simular o pagamento do boleto -> 200, status Paid
 # @name paySale
 POST {{host}}/api/sales-orders/{{saleId}}/boleto/payment

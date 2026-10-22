@@ -17,7 +17,7 @@
 - **Compras com casos de borda:** recebimento parcial, excedente, divergência de preço, nota duplicada e cancelamento do pendente, tudo numa unidade de trabalho.
 - **Faturamento de ponta a ponta:** pedido de venda com reserva de saldo, boleto simulado com linha digitável FEBRABAN, pagamento e nota fiscal que baixa o estoque em FIFO entre lotes.
 - **Acesso por perfil:** `Manager` e `Operator`, com a UI e a API respeitando o perfil.
-- **93 testes** contra SQL Server real (não InMemory).
+- **98 testes** contra SQL Server real (não InMemory).
 - **No ar:** frontend na Vercel, API em container Docker no Azure e banco no Azure SQL.
 
 ### Índice
@@ -53,6 +53,7 @@ Financeiro está planejado como próximo módulo. O recebimento de compras já d
 | Autenticação | ASP.NET Core Identity + JWT Bearer |
 | Validação | FluentValidation |
 | Documentação | Swagger / OpenAPI (Swashbuckle) |
+| PDF | QuestPDF (licença Community) |
 | Testes | xUnit + `WebApplicationFactory`, contra SQL Server real |
 | Frontend | React + TypeScript (Vite), React Router, Axios, Tailwind CSS v4 |
 
@@ -240,6 +241,7 @@ Criar, receber e cancelar devolvem o pedido completo, com itens, recebimentos e 
 | `GET` | `/api/sales-orders?status=&customerId=` | — | Manager, Operator | `200` |
 | `GET` | `/api/sales-orders/{id}` | — | Manager, Operator | `200` `404` |
 | `POST` | `/api/sales-orders` | `customerId`, `storageId`, `paymentMethod`, `notes`, `items[]` (`productId`, `quantity`) | Manager | `201` `400` `422` |
+| `GET` | `/api/sales-orders/{id}/boleto/pdf` | — | Manager, Operator | `200` (`application/pdf`) `404` |
 | `POST` | `/api/sales-orders/{id}/boleto/payment` | `rowVersion` | Manager | `200` `400` `403` `404` `409` `422` |
 | `GET` | `/api/invoices?customerId=` | — | Manager, Operator | `200` |
 | `GET` | `/api/invoices/{id}` | — | Manager, Operator | `200` `404` |
@@ -310,6 +312,7 @@ O pedido devolve o boleto junto (linha digitável de 47 dígitos, valor, vencime
 - Condição de pagamento `Boleto`, `Pix` ou `CreditCard` no contrato; por enquanto só boleto é aceito (`400` para as outras)
 - **Reserva de saldo:** o pedido não mexe no estoque, mas só é aceito se o armazém tiver saldo **disponível** — o físico menos o que outros pedidos ainda não faturados já venderam. Sem isso, o mesmo pote seria vendido duas vezes
 - O boleto é emitido junto com o pedido, com vencimento em 3 dias contados do dia em Brasília. A linha digitável segue o layout FEBRABAN (banco, moeda, fator de vencimento, valor, campo livre e dígitos verificadores módulo 10 e 11 de verdade), mas o título não é registrado em banco nenhum: o pagamento é simulado
+- O boleto sai em **PDF** no layout da ficha de compensação: recibo do pagador, linha de corte e a ficha com o código de barras Intercalado 2 de 5 (103 × 13 mm), remontado a partir da linha digitável. O documento traz a marca "simulação — sem valor" e, se já pago, a data do pagamento no recibo
 - A nota só sai com o boleto pago, e uma vez por pedido. Ela baixa o estoque do armazém do pedido em **FIFO**: o lote que entrou primeiro sai primeiro, e um item pode sair de mais de um lote. Saldo que sumiu entre o pedido e a nota (uma saída avulsa, por exemplo) recusa a emissão com `422` e nada é gravado
 - Pagar e faturar exigem o `rowVersion` do pedido; duas emissões simultâneas do mesmo pedido terminam em `409` para a segunda, e a mercadoria sai uma vez só
 
@@ -364,9 +367,9 @@ cd ProjectBee/tests/ProjectBee.Tests
 dotnet test
 ```
 
-São 93 testes, em duas camadas:
+São 98 testes, em duas camadas:
 
-- **Serviço** (`StockMovementServiceTests`, `PurchaseServiceTests`, `UnitOfWorkTests`, `BoletoGeneratorTests`) — as regras do livro-razão chamando o `StockMovementService` direto: saldo insuficiente, transferência para o mesmo armazém, ajuste sem diferença, sinal de cada movimento, par de transferência com o mesmo `TransferId`, e a prova real depois de uma sequência mista de operações. Nas compras, cada caso de borda: recebimento parcial e total, excedente, cancelamento depois de receber parte, nota em pedido cancelado, preço da nota diferente do pedido, nota repetida, `rowVersion` velho e um listener que falha depois do `SaveChanges` — sem deixar nota, saldo ou movimento para trás. No boleto, os dígitos verificadores são recalculados de forma independente no teste.
+- **Serviço** (`StockMovementServiceTests`, `PurchaseServiceTests`, `UnitOfWorkTests`, `BoletoGeneratorTests`) — as regras do livro-razão chamando o `StockMovementService` direto: saldo insuficiente, transferência para o mesmo armazém, ajuste sem diferença, sinal de cada movimento, par de transferência com o mesmo `TransferId`, e a prova real depois de uma sequência mista de operações. Nas compras, cada caso de borda: recebimento parcial e total, excedente, cancelamento depois de receber parte, nota em pedido cancelado, preço da nota diferente do pedido, nota repetida, `rowVersion` velho e um listener que falha depois do `SaveChanges` — sem deixar nota, saldo ou movimento para trás. No boleto, os dígitos verificadores são recalculados de forma independente no teste, e as barras do código são decodificadas de volta para os 44 dígitos.
 - **API** (`MovementEndpointTests`, `StorageEndpointTests`, `ProductEndpointTests`, `SupplierEndpointTests`, `CustomerEndpointTests`, `PurchaseOrderEndpointTests`, `SalesOrderEndpointTests`, `InvoiceEndpointTests`, `SeedTests`) — a aplicação inteira via `WebApplicationFactory`, com autenticação de verdade: `400` com erros por campo, `422` com `detail`, `401` sem token, `403` do Operator no ajuste e na criação e cancelamento de pedido, bloqueios de desativação e exclusão de armazém, produto e fornecedor, o `/api/stock` recusando escrita, e a prova real fechando com os dados de demonstração num banco recém-criado. Os testes de compras passam pelo `EnableRetryOnFailure` da API, então também provam que a transação do `UnitOfWork` roda dentro da estratégia de execução. No faturamento: reserva de saldo entre pedidos, boleto pago uma vez só, nota antes do pagamento, nota repetida, FIFO entre lotes (com o lote mais antigo vindo depois em ordem alfabética) e saldo que some entre o pedido e a nota.
 
 A concorrência é testada de dois jeitos:
@@ -397,7 +400,7 @@ O frontend cobre todos os módulos, com a UI condicionada ao perfil do usuário 
 | `/app/purchases/:id` | Pedido de compra | Itens com pedido, recebido e pendente; notas recebidas; recebimento de nota e cancelamento do pendente |
 | `/app/customers` | Clientes | CRUD com CPF/CNPJ mascarado e contato |
 | `/app/sales` | Pedidos de venda | Boletos em aberto, pedidos pagos a faturar, filtro por status e criação de pedido com saldo do armazém por item |
-| `/app/sales/:id` | Pedido de venda | Itens, boleto com linha digitável para copiar e simulação do pagamento, nota emitida |
+| `/app/sales/:id` | Pedido de venda | Itens, boleto com linha digitável para copiar, PDF do boleto e simulação do pagamento, nota emitida |
 | `/app/invoices` | Notas fiscais | Pedidos pagos aguardando nota, emissão da nota e notas emitidas com os lotes que saíram |
 
 No recebimento, cada item pendente já vem com a quantidade pendente e o preço do pedido: o caso comum (a nota bate com o pedido) é só informar a nota e os lotes. Preço diferente fica destacado e pede o motivo; quantidade acima do pendente é barrada antes de enviar.
@@ -424,7 +427,7 @@ ProjectBee/
 │   ├── Migrations/             # Histórico do schema e scripts de dados (EF Core)
 │   ├── Models/                 # Entidades de domínio e constantes de perfil
 │   ├── Services/               # StockMovementService (livro-razão), PurchaseService (compras),
-│   │                           #   SalesService e BoletoGenerator (faturamento) e JWT
+│   │                           #   SalesService, BoletoGenerator e BoletoPdf (faturamento) e JWT
 │   └── Validators/             # Regras de validação (FluentValidation)
 ├── tests/
 │   └── ProjectBee.Tests/   # xUnit: testes de serviço e de API contra SQL Server
