@@ -405,7 +405,7 @@ function LandingPage() {
         spacing="loose"
         className="bg-cream"
       >
-        <div className="mt-14 grid items-start gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {MODULES.map((mod) => {
             const styles = mod.active
               ? {
@@ -414,7 +414,7 @@ function LandingPage() {
                   title: 'text-lg font-semibold text-ink',
                 }
               : {
-                  card: 'border-dashed border-line p-6 opacity-70',
+                  card: 'border-dashed border-line p-8 opacity-70',
                   badge: 'bg-line/50 text-ink-muted',
                   title: 'text-base font-medium text-ink-muted',
                 }
