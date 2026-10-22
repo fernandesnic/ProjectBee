@@ -28,9 +28,6 @@ public class SalesService
 
     private const int BoletoDueDays = 3;
 
-    // O vencimento conta a partir do dia em Brasília: em UTC, um pedido das 21h já cairia no dia seguinte.
-    private static readonly TimeZoneInfo Brasilia = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
-
     private readonly AppDbContext _db;
     private readonly UnitOfWork _unitOfWork;
     private readonly StockMovementService _stock;
@@ -98,7 +95,7 @@ public class SalesService
             await _db.SaveChangesAsync();
 
             var ourNumber = BoletoGenerator.OurNumber(order.Number);
-            var dueDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(now, Brasilia)).AddDays(BoletoDueDays);
+            var dueDate = BrazilTime.DateOf(now).AddDays(BoletoDueDays);
             _db.Boletos.Add(new Boleto
             {
                 SalesOrderId = order.Id,
