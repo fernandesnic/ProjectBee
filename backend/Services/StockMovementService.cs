@@ -66,22 +66,35 @@ public class StockMovementService
         if (balance.Balance < quantity)
             return MovementResult.Fail($"Saldo insuficiente. Disponível: {balance.Balance}, solicitado: {quantity}.");
 
-        _db.StockMovements.Add(new StockMovement
-        {
-            Type = MovementType.Exit,
-            ProductId = productId,
-            StorageId = storageId,
-            Batch = batch,
-            Quantity = -quantity,   
-            CreatedBy = user
-        });
-
-        balance.Balance -= quantity;
+        await StageExitAsync(productId, storageId, batch, quantity, user);
 
         if (!await TrySaveAsync())
             return MovementResult.Conflict();
 
         return MovementResult.Ok(balance.Balance);
+    }
+
+    // Par do StageEntryAsync: lança a saída sem gravar, e quem chama já conferiu o saldo do lote
+    // (a nota de venda grava a nota, as saídas e o status do pedido juntos).
+    public async Task<StockBalance> StageExitAsync(
+        Guid productId, Guid storageId, string batch, int quantity, string user,
+        MovementType type = MovementType.Exit, Guid? salesInvoiceId = null)
+    {
+        _db.StockMovements.Add(new StockMovement
+        {
+            Type = type,
+            ProductId = productId,
+            StorageId = storageId,
+            Batch = batch,
+            Quantity = -quantity,
+            SalesInvoiceId = salesInvoiceId,
+            CreatedBy = user
+        });
+
+        var balance = await _db.StockBalances.FindAsync(productId, storageId, batch)
+            ?? throw new InvalidOperationException($"Não existe saldo do lote {batch} para a saída.");
+        balance.Balance -= quantity;
+        return balance;
     }
 
     public async Task<MovementResult> RegisterTransferAsync(
