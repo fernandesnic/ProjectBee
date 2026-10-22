@@ -110,6 +110,14 @@ function SalesOrderPage() {
           {salesOrderCode(order.number)}
         </h1>
         <SalesStatusBadge status={order.status} />
+        {order.status === 'Paid' && (
+          <Link
+            to="/app/invoices"
+            className="flex h-11 w-full items-center justify-center rounded-full bg-honey px-5 text-sm font-semibold text-hive transition hover:bg-honey-light sm:ml-auto sm:h-auto sm:w-auto sm:py-2"
+          >
+            Emitir nota fiscal
+          </Link>
+        )}
       </div>
 
       <dl className="mt-6 grid gap-4 rounded-2xl border border-line bg-cream-soft p-4 text-sm sm:grid-cols-2 sm:p-6 lg:grid-cols-4">

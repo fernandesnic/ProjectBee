@@ -14,6 +14,7 @@ import PurchaseOrdersPage from './pages/PurchaseOrdersPage'
 import PurchaseOrderPage from './pages/PurchaseOrderPage'
 import SalesOrdersPage from './pages/SalesOrdersPage'
 import SalesOrderPage from './pages/SalesOrderPage'
+import InvoicesPage from './pages/InvoicesPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 function NavigatorSetup() {
@@ -44,6 +45,7 @@ function App() {
           <Route path="purchases/:id" element={<PurchaseOrderPage />} />
           <Route path="sales" element={<SalesOrdersPage />} />
           <Route path="sales/:id" element={<SalesOrderPage />} />
+          <Route path="invoices" element={<InvoicesPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

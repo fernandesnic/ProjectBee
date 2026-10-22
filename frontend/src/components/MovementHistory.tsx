@@ -10,6 +10,7 @@ const TYPE_LABEL: Record<MovementType, string> = {
   Adjustment: 'Ajuste',
   OpeningBalance: 'Saldo inicial',
   PurchaseReceipt: 'Recebimento de compra',
+  SalesInvoice: 'Nota de venda',
 }
 
 interface MovementHistoryProps {

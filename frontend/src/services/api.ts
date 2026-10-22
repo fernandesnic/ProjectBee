@@ -277,6 +277,7 @@ export type MovementType =
   | 'Adjustment'
   | 'OpeningBalance'
   | 'PurchaseReceipt'
+  | 'SalesInvoice'
 
 export interface Movement {
   id: string
