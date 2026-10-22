@@ -143,4 +143,6 @@ app.MapPurchaseOrderEndpoints();
 
 app.MapSalesOrderEndpoints();
 
+app.MapInvoiceEndpoints();
+
 app.Run();
