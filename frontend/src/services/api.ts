@@ -200,6 +200,50 @@ export async function deleteSupplier(id: string) {
   await api.delete(`/api/suppliers/${id}`)
 }
 
+export interface Customer {
+  id: string
+  name: string
+  document: string // CPF ou CNPJ, só dígitos
+  email: string
+  phone: string
+  isActive: boolean
+  rowVersion: string // base64; volta no PUT para a API detectar edição concorrente
+}
+
+interface CustomerFields {
+  name: string
+  email: string
+  phone: string
+}
+
+export interface CreateCustomerPayload extends CustomerFields {
+  document: string
+}
+
+export interface UpdateCustomerPayload extends CustomerFields {
+  rowVersion: string
+  isActive: boolean
+}
+
+export async function getCustomers() {
+  const { data } = await api.get<Customer[]>('/api/customers')
+  return data
+}
+
+export async function createCustomer(payload: CreateCustomerPayload) {
+  const { data } = await api.post<Customer>('/api/customers', payload)
+  return data
+}
+
+export async function updateCustomer(id: string, payload: UpdateCustomerPayload) {
+  const { data } = await api.put<Customer>(`/api/customers/${id}`, payload)
+  return data
+}
+
+export async function deleteCustomer(id: string) {
+  await api.delete(`/api/customers/${id}`)
+}
+
 export interface StockBalance {
   productId: string
   productName: string

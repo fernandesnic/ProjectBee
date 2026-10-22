@@ -29,7 +29,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/app/products', label: 'Produtos' },
       { to: '/app/storages', label: 'Armazéns' },
       { to: '/app/suppliers', label: 'Fornecedores' },
-      { label: 'Clientes' },
+      { to: '/app/customers', label: 'Clientes' },
     ],
   },
   {
